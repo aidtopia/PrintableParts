@@ -3,7 +3,7 @@
 
 // Customizable Parameters
 
-// nozzle size determines the clearanc between mating parts
+// nozzle size determines the clearance between mating parts
 nozzle_size = 0.4; // [0:0.1:1]
 
 module __Customizer_Limit__ () {}
@@ -24,27 +24,25 @@ tophat_35_75_profile = [
       [0, 0]
 ];
 
-function clip_profile(clearance=nozzle_size/2) = [
+clip_profile = let (c=nozzle_size/2) [
+    // x        y       r
     // inner vertical
-    [0-clearance, 1],
-    [0-clearance, 35+clearance],
+    [  0-c,     1,    0.0],
+    [  0-c,  35+c,      c],
     // top hook
-    [1, 35+clearance],
-    [3+clearance, 32],
-    [4, 32],
-    [4, 40],
+    [    1,  35+c,      c],
+    [   2.5,    32,    0.5],
+    [    4,    32,    0.5],
+    [    4,    40,    1.0],
     // outer vertical
-    [-10, 40],
-    [-10, -1],
+    [  -10,    40,    1.0],
+    [  -10,    -2,    1.0],
     // cantilever snap
-    [5, -1],
-    [5, 0-clearance],
-    [1+clearance, 1],
-    [1+clearance, 0-clearance],
-    [-7.75, 0],
-    [-8, 0.25],
-    [-8, 0.75],
-    [-7.75, 1]
+    [    6,    -2,    0.5],
+    [  1+c,   1+c,    0.0],
+    [  1+c,   0-c,    0.2],
+    [   -8,     c,    0.3],
+    [   -8,     1,    0.3]
 ];
 
 test_shape = [
@@ -124,4 +122,5 @@ function rounded_polygon(points) =
                 each [ Aprime, each arc(F, r, Aprime, Cprime), Cprime]
     ];
 
-linear_extrude(height=9) polygon(rounded_polygon(test_shape, $fs=0.2));
+linear_extrude(height=9) polygon(rounded_polygon(clip_profile, $fs=0.2));
+#linear_extrude(height=9) polygon(tophat_35_75_profile);
