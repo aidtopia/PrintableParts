@@ -22,7 +22,7 @@ Screw_Size = "M3"; // [M2, M3, M3.5, M4, #4-40]
 // (mm, 7≈1/4", 13≈1/2")
 Screw_Length = 10; // [4:1:15]
 
-Threading = "captive hex nut"; // [captive hex nut, tapped, heat-set insert]
+Threading = 1; // [1:captive hex nut, 2:tapped, 3:heat-set insert]
 
 module __Customizer_Limit__ () {}  // End of Customizable Parameters
 
@@ -182,4 +182,16 @@ module DIN_clip(width=9) {
     }
 }
 
-DIN_clip(Clip_Width);
+module DIN_adapter(width=9) {
+    zScrews = width / 2;
+    yCenter = 35 / 2;
+    difference() {
+        DIN_clip(width);
+        translate([-15, yCenter, zScrews]) rotate([0, 90, 0]) cylinder(h = 30, d = 3.5, $fs=Nozzle_Size/2);
+        translate([-15, yCenter + 12.5, zScrews]) rotate([0, 90, 0]) cylinder(h = 30, d = 3.5, $fs=Nozzle_Size/2);
+        translate([-15, yCenter - 12.5, zScrews]) rotate([0, 90, 0]) cylinder(h = 30, d = 3.5, $fs=Nozzle_Size/2);
+
+    }
+}
+
+DIN_adapter(Clip_Width);
