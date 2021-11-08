@@ -26,7 +26,7 @@ Threading = 2; // [0: none, 1:tapped, 2:captive hex nut, 3:heat-set insert]
 
 module __Customizer_Limit__ () {}  // End of Customizable Parameters
 
-use <utility.scad>;
+use <../aidutil.scad>;
 
 tophat_35_75_profile = [
     [0, 0],
