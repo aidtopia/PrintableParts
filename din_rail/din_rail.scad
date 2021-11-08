@@ -99,10 +99,6 @@ clip_profile =
         [  xBase,           yBeamBase+1,    rFillet ]
     ];
 
-function magnitude(v) = norm(v);
-
-function normalized(v) = 1/magnitude(v) * v;
-
 function set_radii(points, r) = [ for (i=points) [i.x, i.y, r] ];
 function clear_radii(points)  = [ for (i=points) [i.x, i.y] ];
 
