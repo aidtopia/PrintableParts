@@ -13,3 +13,6 @@ function point_to_line(point, line) =
     abs(line[0]*point.x + line[1]*point.y + line[2]) /
     sqrt(line[0]*line[0] + line[1]*line[1]);
 
+// Rounds n to a multiple of base.
+function round_up(n, base=1) = n % base == 0 ? n : floor(n+base/base)*base;
+

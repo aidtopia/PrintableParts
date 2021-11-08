@@ -22,11 +22,11 @@ Screw_Size = "M3"; // [M2, M3, M3.5, M4, #4-40]
 // (mm, 7≈1/4", 13≈1/2")
 Screw_Length = 10; // [4:1:15]
 
-Threading = 1; // [1:captive hex nut, 2:tapped, 3:heat-set insert]
+Threading = 2; // [0: none, 1:tapped, 2:captive hex nut, 3:heat-set insert]
 
 module __Customizer_Limit__ () {}  // End of Customizable Parameters
 
-function round_up(n, base=1) = n % base == 0 ? n : floor(n+base/base)*base;
+use <utility.scad>;
 
 tophat_35_75_profile = [
     [0, 0],
@@ -99,14 +99,6 @@ clip_profile =
         [  xBase,           yBeamBase+1,    rFillet ]
     ];
 
-test_shape = [
-    // x       y       r
-    [  0,      0,      2],
-    [ -5,     20,      2],
-    [  7,      7,      2],
-    [ 30,      0,      2]
-];
-
 function magnitude(v) = norm(v);
 
 function normalized(v) = 1/magnitude(v) * v;
@@ -174,11 +166,11 @@ function rounded_polygon(points) = [
 ];
 
 module DIN_clip(width=9) {
-    linear_extrude(height=width)
+    linear_extrude(height=width, convexity=15)
         polygon(rounded_polygon(clip_profile, $fs=Nozzle_Size/2));
     if ($preview) {
-    //    #polygon(clear_radii(clip_profile));
-        #translate([0, 0, -2]) linear_extrude(height=width+4) polygon(tophat_35_75_profile);
+        #translate([0, 0, -2]) linear_extrude(height=width+4) 
+            polygon(tophat_35_75_profile);
     }
 }
 
