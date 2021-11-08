@@ -19,7 +19,7 @@ Clip_Width = 9; // [4.5:4.5:27]
 
 Screw_Size = "M3"; // [M2, M3, M3.5, M4, #4-40]
 
-// (mm, 7≈1/4", 13≈1/2")
+// (mm, 7 mm ≈ 1/4", 13 mm ≈ 1/2")
 Screw_Length = 10; // [4:1:15]
 
 Threading = 2; // [0: none, 1:tapped, 2:captive hex nut, 3:heat-set insert]
@@ -98,68 +98,6 @@ clip_profile =
         [  xBase,           yBeamBase,      rFillet ],
         [  xBase,           yBeamBase+1,    rFillet ]
     ];
-
-function set_radii(points, r) = [ for (i=points) [i.x, i.y, r] ];
-function clear_radii(points)  = [ for (i=points) [i.x, i.y] ];
-
-function wrap_path(points) =
-    [points[len(points) - 1], each points, points[0]];
-
-function push_to_circumference(p, focus, radius) =
-    focus + normalized(p - focus)*radius;
-
-function mid(a, b) = a + 0.5*(b - a);
-
-function arc(focus, r, p1, p2, depth=0) =
-    depth >= 8 ? [] :  // prevent runaway recursion
-    magnitude(p1-p2) <= $fs ? [] :
-        let (midpoint = push_to_circumference(mid(p1, p2), focus, r)) [
-            each arc(focus, r, p1, midpoint, depth=depth+1),
-            midpoint,
-            each arc(focus, r, midpoint, p2, depth=depth+1)
-        ];
-
-function compute_arcs(points) =
-    let (path = wrap_path(points)) [
-        for (i = [1:len(path)-2])
-            let (
-                A = [path[i-1].x, path[i-1].y],  // adjacent vertex
-                B = [path[i].x, path[i].y],      // current vertex
-                C = [path[i+1].x, path[i+1].y],  // adjacent vertex
-                r = is_undef(path[i][2]) ? 0 : path[i][2], // radius of arc
-
-                // Ahat and Chat are unit vectors pointing from B toward
-                // vertices A and C, respectively.
-                Ahat = normalized(A - B),
-                Chat = normalized(C - B),
-        
-                // Fhat points from B, bisecting the angle formed by AB and CB.
-                Fhat = normalized(Ahat + Chat),
-
-                // Theta is the half-angle between the sides meeting at B.
-                // The dot product of unit vectors is equal to the cosine of
-                // the angle between them.
-                costheta = Fhat*Ahat,
-                sintheta = sqrt(1 - costheta*costheta),
-
-                // Compute F, the focus (center) of the circle needed to make
-                // the arc.
-                offset = r / sintheta,
-                F = B + offset*Fhat,
-                
-                // Aprime and Cprime are the points at which the corresponding
-                // sides of the polygon are tangent to a circle of radius r at F.
-                Aprime = B + offset*costheta*Ahat, // endpoints of the arc
-                Cprime = B + offset*costheta*Chat
-            )
-            [ F, r, Aprime, Cprime ]
-    ];
-
-function rounded_polygon(points) = [
-    for (a = compute_arcs(points))
-        let (F = a[0], r = a[1], Aprime = a[2], Cprime = a[3])
-            each [ Aprime, each arc(F, r, Aprime, Cprime), Cprime]
-];
 
 module DIN_clip(width=9) {
     linear_extrude(height=width, convexity=15)
