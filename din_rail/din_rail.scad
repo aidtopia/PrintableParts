@@ -17,16 +17,17 @@ Beam_Length = 10; // [8:0.5:15]
 // width of the DIN clip (mm)
 Clip_Width = 9; // [4.5:4.5:27]
 
-Screw_Size = "M3"; // [M2, M3, M3.5, M4, #4-40]
+Bolt_Size = "M3"; // [M2, M3, M3.5, M4, #4-40, 1/4-20]
 
 // (mm, 7 mm ≈ 1/4", 13 mm ≈ 1/2")
-Screw_Length = 10; // [4:1:15]
+Bolt_Length = 10; // [4:1:15]
 
-Threading = 2; // [0: none, 1:tapped, 2:captive hex nut, 3:heat-set insert]
+Mating_Thread = "recessed hex nut"; // [none, tapped, recessed hex nut, heat-set insert]
 
 module __Customizer_Limit__ () {}  // End of Customizable Parameters
 
 use <../aidutil.scad>;
+use <../aidbolt.scad>;
 
 tophat_35_75_profile = [
     [0, 0],
@@ -63,7 +64,7 @@ clip_profile =
         xOHang = 2*xCatch,
         xTips = min(5*xCatch, 7.5-c),
         xBase = xCatch - lBeam,
-        xMount = xRail - max(10, Screw_Length, xCatch-xBase+0.5),
+        xMount = xRail - max(10, Bolt_Length, xCatch-xBase+0.5),
 
         yRail = 35 + c,
         yOHang = yRail - 3,
@@ -109,14 +110,17 @@ module DIN_clip(width=9) {
 }
 
 module DIN_adapter(width=9) {
+    lScrews = max(10, Bolt_Length);
     zScrews = width / 2;
     yCenter = 35 / 2;
+    xMount = 0 - lScrews - Nozzle_Size/2;
     difference() {
         DIN_clip(width);
-        translate([-15, yCenter, zScrews]) rotate([0, 90, 0]) cylinder(h = 30, d = 3.5, $fs=Nozzle_Size/2);
-        translate([-15, yCenter + 12.5, zScrews]) rotate([0, 90, 0]) cylinder(h = 30, d = 3.5, $fs=Nozzle_Size/2);
-        translate([-15, yCenter - 12.5, zScrews]) rotate([0, 90, 0]) cylinder(h = 30, d = 3.5, $fs=Nozzle_Size/2);
-
+        translate([xMount, yCenter, zScrews]) {
+                                     rotate([0, -90, 0]) bolt_hole(Bolt_Size, lScrews, Mating_Thread);
+            translate([0,  12.5, 0]) rotate([0, -90, 0]) bolt_hole(Bolt_Size, lScrews, Mating_Thread);
+            translate([0, -12.5, 0]) rotate([0, -90, 0]) bolt_hole(Bolt_Size, lScrews, Mating_Thread);
+        }
     }
 }
 

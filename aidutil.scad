@@ -14,7 +14,7 @@ function mid(a, b) = a + 0.5*(b - a);
 function normalized(v) = 1/magnitude(v) * v;
 
 // Rounds n to a multiple of base.
-function round_up(n, base=1) = n % base == 0 ? n : floor(n+base/base)*base;
+function round_up(n, base=1) = n % base == 0 ? n : floor((n+base)/base)*base;
 
 // 2D FUNCTIONS
 
