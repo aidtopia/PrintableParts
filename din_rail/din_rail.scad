@@ -17,7 +17,7 @@ Beam_Length = 10; // [8:0.5:15]
 // width of the DIN clip (mm)
 Clip_Width = 9; // [4.5:4.5:27]
 
-Bolt_Size = "M3"; // [M2, M3, M3.5, M4, #4-40, 1/4-20]
+Bolt_Size = "M3"; // [M2, M3, M4, #2-56, #4-40, #6-32, 1/4-20]
 
 // (mm, 7 mm ≈ 1/4", 13 mm ≈ 1/2")
 Bolt_Length = 10; // [4:1:15]
@@ -51,6 +51,7 @@ clip_profile =
         c = n/2,        // c for clearances
         thRail = 1,     // DIN rail is 1mm thick
         rTips = round_up(0.5, n),
+        thClip = round_up(2, n),
 
         thBeamBase = round_up(2, n), // thickness of the cantilever at the base of the beam
         thBeamCatch = round_up(1, n), // thickness of the cantilever at the catch
@@ -63,20 +64,22 @@ clip_profile =
         xPlateau = xCatch + 0.5,
         xOHang = 2*xCatch,
         xTips = min(5*xCatch, 7.5-c),
-        xBase = xCatch - lBeam,
-        xMount = xRail - max(10, Bolt_Length, xCatch-xBase+0.5),
+        xBeamBase = xCatch - lBeam,
+        xBack  = xRail - thClip,
+        xKickBack = xBeamBase - thClip,
 
         yRail = 35 + c,
         yOHang = yRail - 3,
-        yTop = yRail + 2,
+        yTop = yRail + thClip,
         yBeamCatch = 0 - c,
         yBeamBase = yBeamCatch + thBeamBase - thBeamCatch,
+        yKickBack = yBeamBase + 1 + thClip,
         yBottom = yBeamBase - thBeamBase,
         yPlateau = deflBeam
     ) [
         //  x               y               r
         // the edge that rests against the DIN rail
-        [   xRail,          0.0,            2*n     ],
+        [   xRail,          yBeamBase,      2*n     ],
         [   xRail,          yRail,          c       ],
         // the top hook overhangs the top edge of the rail
         [   xCatch,         yRail,          c       ],
@@ -88,16 +91,18 @@ clip_profile =
         [  xTips,           yTop-1,         rTips   ],
         [  xTips,           yTop,           rTips   ],
         // the edge that the module mounts to
-        [  xMount,          yTop,           0.0     ],
-        [  xMount,          yBottom,        3*n     ],
+        [  xBack,           yTop,           2*n     ],
+        [  xBack,           yKickBack,      2*n     ],
+        [  xKickBack,       yKickBack,      2*n     ],
+        [  xKickBack,       yBottom,        2*n     ],
         // cantilever snap
         [  xTips,           yBottom,        rTips   ],
         [  xTips,           yBeamCatch,     rTips   ],
         [  xPlateau,        yPlateau,       1.0     ],
         [  xCatch,          yPlateau,       0.0     ],
         [  xCatch,          yBeamCatch,     0.2     ],
-        [  xBase,           yBeamBase,      rFillet ],
-        [  xBase,           yBeamBase+1,    rFillet ]
+        [  xBeamBase,       yBeamBase,      rFillet ],
+        [  xBeamBase,       yBeamBase+1,    rFillet ]
     ];
 
 module DIN_clip(width=9) {
