@@ -26,9 +26,11 @@ machine_screws = [
     // name     free-fit    close-fit   tapping     pitch       nut_w       nut_th
     ["#2-56",   thou( 96),  thou( 89),  thou( 70),  tpi(56),    inch(3/16), inch(1/16)],
     ["#4-40",   thou(120),  thou(116),  thou( 89),  tpi(40),    inch(1/4),  inch(3/32)],
-    ["1/4-20",  thou(266),  thou(357),  thou(201),  tpi(20),    inch(7/16), inch(3/16)],
+    ["#6-32",   thou(149.5),thou(144),  thou(106.5),tpi(32),    inch(5/16), inch(7/64)],
+    ["1/4-20",  thou(266),  thou(257),  thou(201),  tpi(20),    inch(7/16), inch(3/16)],
     ["M2",      2.4,        2.4,        1.6,        0.40,       4.00,       1.60      ],
-    ["M3",      3.4,        3.4,        2.5,        0.50,       5.50,       2.40      ]
+    ["M3",      3.4,        3.4,        2.5,        0.50,       5.50,       2.40      ],
+    ["M4",      4.5,        4.3,        3.5,        0.70,       7.00,       3.20      ]
 ];
 
 function find_row(key, table, low, high) =
@@ -42,7 +44,7 @@ function bolt_params(key, table) =
     let(row = find_row(key, table, 0, len(table) - 1))
     assert(!is_undef(row), "Bolt size not found in table.") row;
 
-module bolt_hole(size, l, threads="none", nozzle_d=0.4, table=machine_screws) {
+module bolt_hole(size, l, threads="none", table=machine_screws, nozzle_d=0.4) {
     $fs = nozzle_d/2;
     bolt = bolt_params(size, table=table);
     free_d = bolt[1];
