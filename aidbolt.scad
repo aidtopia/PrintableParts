@@ -53,16 +53,18 @@ module bolt_hole(size, l, threads="none", table=machine_screws, nozzle_d=0.4) {
     pitch = bolt[4];
     shaft_d = (threads == "tapped" || threads == "heat-set insert") ?
         tap_d : free_d;
-    translate([0, 0, -l - 0.2]) cylinder(h=l + 0.3, d=shaft_d + nozzle_d);
+    union() {
+        translate([0, 0, -l - 0.2]) cylinder(h=l + 0.3, d=shaft_d + nozzle_d);
     
-    if (threads == "recessed hex nut") {
-        nut_w = bolt[5];
-        nut_d = round_up(nut_w / cos(30), nozzle_d);
-        echo(nut_d);
-        nut_th = bolt[6];
-        protrusion = 2*pitch;
-        translate([0, 0, -l - 0.1])
-            cylinder(h=nut_th + protrusion + 0.1, d=nut_d + nozzle_d, $fn=6);
+        if (threads == "recessed hex nut") {
+            nut_w = bolt[5];
+            nut_d = round_up(nut_w / cos(30), nozzle_d);
+            echo(nut_d);
+            nut_th = bolt[6];
+            protrusion = 2*pitch;
+            translate([0, 0, -l - 0.1])
+                cylinder(h=nut_th + protrusion + 0.1, d=nut_d + nozzle_d, $fn=6);
+        }
     }
 }
 
