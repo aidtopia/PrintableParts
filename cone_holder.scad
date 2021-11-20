@@ -1,6 +1,5 @@
 // Cone holder (for ice cream cones, snow cones, etc.)
 // Adrian McCarthy 2021
-//
 
 module snowflake() {
     for (theta = [0:60:300]) {
@@ -12,10 +11,17 @@ module snowflake() {
 }
 
 // Based on the dimensions of a 6-ounce Sno-Kone(R) brand paper cone.
+module cone_6_ounce() {
+    hull() {
+        translate([0, 0, 110]) linear_extrude(1) circle(d=85, $fs=0.4);
+        translate([0, 0, 2]) sphere(d=4, $fs=0.2);
+    }
+}
+
 module plain_cone_holder() {
-    height = 95;
-    top_id = 70;
-    bottom_od = 80;
+    height = 67;
+    top_id = 50;
+    bottom_od = 70;
     thickness = 2.8;
     top_od = top_id + 2*thickness;
     bottom_id = bottom_od - 2*thickness;
@@ -29,23 +35,15 @@ module plain_cone_holder() {
 module cone_holder() {
     difference() {
         plain_cone_holder();
-        rotate([0, 0, 57]) translate([0, 0, 30]) rotate([90]) linear_extrude(height=100, center=true) rotate([0, 0, 20]) scale(15) children();
-        rotate([0, 0, 7]) translate([0, 0, 45]) rotate([90]) linear_extrude(height=100, center=true) rotate([0, 0, 9]) scale(11) children();
-        rotate([0, 0, 31]) translate([0, 0, 70]) rotate([90]) linear_extrude(height=100, center=true) rotate([0, 0, -15]) scale(9) children();
-        rotate([0, 0, 90+57]) translate([0, 0, 95-30]) rotate([90]) linear_extrude(height=100, center=true) rotate([0, 0, 20]) scale(15) children();
-        rotate([0, 0, 90+7]) translate([0, 0, 95-45]) rotate([90]) linear_extrude(height=100, center=true) rotate([0, 0, 9]) scale(11) children();
-        rotate([0, 0, 90+31]) translate([0, 0, 95-70]) rotate([90]) linear_extrude(height=100, center=true) rotate([0, 0, -15]) scale(9) children();
+        rotate([0, 0, 57]) translate([0, 0, 20]) rotate([90]) linear_extrude(height=100, center=true) rotate([0, 0, 20]) scale(13) children();
+        rotate([0, 0, 7]) translate([0, 0, 33]) rotate([90]) linear_extrude(height=100, center=true) rotate([0, 0, 9]) scale(10) children();
+        rotate([0, 0, 37]) translate([0, 0, 50]) rotate([90]) linear_extrude(height=100, center=true) rotate([0, 0, -15]) scale(7) children();
     }
 }
 
-module cone_6_ounce() {
-    hull() {
-        translate([0, 0, 110]) linear_extrude(1) circle(d=85, $fs=0.4);
-        translate([0, 0, 2]) sphere(d=4, $fs=0.2);
-    }
+if ($preview) {
+    #translate([0, 0, 2.5]) cone_6_ounce();
 }
-
-#translate([0, 0, 2.5]) cone_6_ounce();
 
 cone_holder() {
     snowflake($fn=9) {
