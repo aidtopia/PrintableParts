@@ -22,7 +22,7 @@ Bolt_Size = "M3"; // [M2, M3, M4, #2-56, #4-40, #6-32, 1/4-20]
 // (mm, 7 mm ≈ 1/4", 13 mm ≈ 1/2")
 Bolt_Length = 10; // [4:1:15]
 
-Mating_Thread = "recessed hex nut"; // [none, tapped, recessed hex nut, heat-set insert]
+Mating_Thread = "tapped"; // [none, tapped, recessed hex nut, heat-set insert]
 
 module __Customizer_Limit__ () {}  // End of Customizable Parameters
 
@@ -95,7 +95,12 @@ clip_profile =
         [  xBack,           yKickBack,      2*n     ],
         [  xKickBack,       yKickBack,      2*n     ],
         [  xKickBack,       yBottom,        2*n     ],
-        // cantilever snap
+        // release tab
+        [  xCatch-thClip,   yBottom,        rFillet ],
+        [  xCatch-thClip,   yBottom-3*thClip,      rFillet ],
+        [  xCatch,          yBottom-3*thClip,      rFillet ],
+        [  xCatch,          yBottom,        rFillet ],
+        // cantilever
         [  xTips,           yBottom,        rTips   ],
         [  xTips,           yBeamCatch,     rTips   ],
         [  xPlateau,        yPlateau,       1.0     ],
@@ -103,6 +108,43 @@ clip_profile =
         [  xCatch,          yBeamCatch,     0.2     ],
         [  xBeamBase,       yBeamBase,      rFillet ],
         [  xBeamBase,       yBeamBase+1,    rFillet ]
+    ];
+
+clip_low_profile =
+    let (
+        n = Nozzle_Size,
+        c = n/2,        // c for clearances
+        thRail = 1,     // DIN rail is 1mm thick
+        rTips = round_up(0.5, n),
+        thClip = round_up(2, n),
+
+        xRail = 0 - c,
+        xCatch = xRail + c + thRail + c,
+        xOHang = 2*xCatch,
+        xTips = min(5*xCatch, 7.5-c),
+        xBack  = xRail - thClip,
+
+        yRail = 35 + c,
+        yOHang = yRail - 3,
+        yTop = yRail + thClip,
+        yBottom = 0 - thClip
+    ) [
+        //  x               y               r
+        // the edge that rests against the DIN rail
+        [   xRail,          -c,             c       ],
+        [   xRail,          yRail,          c       ],
+        // the top hook overhangs the top edge of the rail
+        [   xCatch,         yRail,          c       ],
+        [   xOHang,         yOHang,         3*n     ],
+        [   mid(xOHang, xTips),
+                            yOHang,         3*n     ],
+        [  xTips,           yTop-1,         rTips   ],
+        [  xTips,           yTop,           rTips   ],
+        // the edge that the module mounts to
+        [  xBack,           yTop,           2*n     ],
+        [  xBack,           yBottom,        2*n     ],
+        [  xTips,           yBottom,        rTips   ],
+        [  xTips,           -c,             rTips   ]
     ];
 
 module DIN_clip(width=9) {
@@ -129,4 +171,4 @@ module DIN_adapter(width=9) {
     }
 }
 
-DIN_adapter(Clip_Width);
+DIN_clip(Clip_Width);
