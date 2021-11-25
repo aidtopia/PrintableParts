@@ -11,7 +11,9 @@ function magnitude(v) = norm(v);
 function mid(a, b) = a + 0.5*(b - a);
 
 // Returns a unit length vector in the same direction.
-function normalized(v) = 1/magnitude(v) * v;
+function normalized(v) =
+    let(length = magnitude(v))
+        (length != 0) ? 1/length * v : 0 * v;
 
 // Rounds n to a multiple of base.
 function round_up(n, base=1) = n % base == 0 ? n : floor((n+base)/base)*base;
