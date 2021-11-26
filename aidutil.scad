@@ -43,6 +43,21 @@ function set_radii(points, r) = [ for (i=points) [i.x, i.y, r] ];
 // OpenSCAD's polygon won't ignore the third component.
 function clear_radii(points)  = [ for (i=points) [i.x, i.y] ];
 
+function remove_adjacent_duplicates(points) = [
+    points[0],
+    each [for (i = [1:len(points)-2]) if (points[i] != points[i-1]) points[i]],
+    each [for (i = len(points)-1) if (points[i] != points[0]) points[i]]
+];
+
+// Returns a copy of the vector with additional points mirroring the original
+// ones reflected in x.
+function mirror_path(points) =
+    remove_adjacent_duplicates([
+        each points,
+        each [ for (j=[1:len(points)]) let(i=len(points)-j)
+                   [-points[i].x, points[i].y, points[i][2]] ]
+    ]);
+
 // Returns a copy of the vector with a duplicate of the last point at the
 // beginning and the first point at the end.  This simplifies indexing the
 // previous and next point.
