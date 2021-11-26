@@ -2,13 +2,34 @@
 // Adrian McCarthy 2021
 // Inspired by Rex McCarthy's version.
 
+// BEGIN CUSTOMIZER PARAMETERS
+
+// length of the jumper wires between the pin housings (mm)
+// (err to a smaller value)
+Wire_Length = 145; // [75:5:180]
+
+// typical usage is one slot for each color of wire
+Slots = 10; // [1:20]
+
+// maximum number of wires to store in a single slot
+Wires_per_Slot = 15; // [5:30]
+
+// distance between the slots (mm)
+Spacing = 10;  // [5:1:26]
+
+// some dimensions are optimized to the 3D printer's nozzle diameter (mm)
+Nozzle_Size = 0.4; // [0.1:0.05:0.8]
+
+module __END_CUSTOMIZER_PARAMETERS__ () {}
+
+
 use <aidutil.scad>
 
 module jumper_wire_organizer(
     length=145,     // length of wires (between pin housings)
     slots=10,       // number of colors you want to hold
-    spacing=10,     // spacing from slot to slot
     depth=15,       // number of wires to fit in each slot
+    spacing=10,     // spacing from slot to slot
     thickness=3,    // wall thickness (may be rounded up slightly)
     nozzle_d=0.4
 ) {
@@ -44,7 +65,7 @@ module jumper_wire_organizer(
                             height-wall_th, big_r   ]            
         ], $fs=nozzle_d/2);
         
-        rotate([90, 0, 0]) linear_extrude(width) difference() {
+        rotate([90, 0, 0]) linear_extrude(width, convexity=10) difference() {
             polygon(profile);
             polygon(cutout);
             mirror([1, 0, 0]) polygon(cutout);
@@ -68,4 +89,11 @@ module jumper_wire_organizer(
     }
 }
 
-jumper_wire_organizer();
+jumper_wire_organizer(
+    length=Wire_Length,
+    slots=Slots,
+    depth=Wires_per_Slot,
+    spacing=Spacing,
+    thickness=3,
+    nozzle_d=Nozzle_Size
+);
