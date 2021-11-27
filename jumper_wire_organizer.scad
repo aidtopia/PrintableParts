@@ -6,7 +6,7 @@
 
 // length of the jumper wires between the pin housings (mm)
 // (err to a smaller value)
-Wire_Length = 145; // [75:5:180]
+Wire_Length = 145; // [70:5:200]
 
 // typical usage is one slot for each color of wire
 Slots = 10; // [1:20]
