@@ -1,0 +1,26 @@
+{
+    "parameterSets": {
+        "design default values": {
+            "Nozzle_Size": "0.4",
+            "Slots": "10",
+            "Spacing": "10",
+            "Wire_Length": "145",
+            "Wires_per_Slot": "15"
+        },
+        "6\" wires": {
+            "Nozzle_Size": "0.4",
+            "Slots": "10",
+            "Spacing": "10",
+            "Wire_Length": "145",
+            "Wires_per_Slot": "15"
+        },
+        "3\" wires": {
+            "Nozzle_Size": "0.4",
+            "Slots": "10",
+            "Spacing": "10",
+            "Wire_Length": "75",
+            "Wires_per_Slot": "15"
+        }
+    },
+    "fileFormatVersion": "1"
+}
