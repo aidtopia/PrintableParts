@@ -16,7 +16,24 @@ function normalized(v) =
         (length != 0) ? 1/length * v : 0 * v;
 
 // Rounds n to a multiple of base.
-function round_up(n, base=1) = n % base == 0 ? n : floor((n+base)/base)*base;
+function round_up(n, base=1) =
+    n % base == 0 ? n : floor((n+base)/base)*base;
+
+// TABLE LOOKUP FUNCTIONS
+    
+function find_row(key, table, low, high) =
+  low > high ? undef :
+  let(i = round_up(mid(low, high)))
+    table[i][0] == key ? table[i] :
+    table[i][0] <  key ? find_row(key, table, i+1, high) :
+                         find_row(key, table, low, i-1);
+
+function find_params(key, table) =
+    find_row(key, table, 0, len(table) - 1);
+
+function remap_key(key, mapping) =
+    let(mapped = find_params(key, mapping))
+        is_undef(mapped) ? key : mapped[1];
 
 // 2D FUNCTIONS
 
