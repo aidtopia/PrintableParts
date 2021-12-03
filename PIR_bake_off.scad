@@ -1,65 +1,71 @@
 // PIR bake-off bracket
 // Adrian McCarthy 2021
 
-use <../../scad/PrintableParts/aidbolt.scad>
-use <../../scad/PrintableParts/aidutil.scad>
+use <aidbolt.scad>
+use <aidutil.scad>
 
-sensors = [
-    ["Adafruit 189",    23,     "M2.5",     28.5/2,     0],
-    ["Adafruit 4871",   12.3,   "",         0,          0],
-    ["Generic",         23.2,   "M2",       29/2,       0],
-    ["Parallax",        23,     "M2.5",     35/2,       0],
-    ["SparkFun",        22,     "M2.5",     23/2,       27.5/2]
-];
+module PIR_tester(sensors, thickness=2.4, spacing=40, nozzle_d=0.4) {
+    led_d = round_up(5.5, nozzle_d);
 
+    width = spacing*len(sensors);
+    height = spacing + 10;
+    depth = 25.4;
 
-nozzle_d = 0.4;
-thickness = 2.4;
-spacing = round_up(40, 2.54);
-led_d = 5;
+    difference() {
+        // Face plate
+        cube([width, height, thickness]);
 
-difference() {
-    union() {
-        cube([spacing*len(sensors), spacing+10, thickness]);
-        for (i=[0:len(sensors)-1]) translate([i*spacing + spacing/2, spacing/2, 0]) {
+        for (i=[0:len(sensors)-1]) {
             sensor = sensors[i];
-            translate([-spacing/2 + led_d + 1.5, spacing/2, thickness-1]) {
-                linear_extrude(2+1, convexity=10)
-                    text(sensor[0], size=4, font="Trebuchet MS", valign="center");
+            translate([i*spacing + spacing/2, spacing/2, 0]) {
+                // Opening for PIR's lens:
+                lens_d = round_up(sensor[1], nozzle_d);
+                translate([0, 0, -1])
+                    cylinder(d=lens_d, h=thickness+2, $fs=nozzle_d/2);
+
+                // Labels
+                translate([0, spacing/2, 0.4]) {
+                    linear_extrude(thickness, convexity=10)
+                        text(sensor[0], size=5, font="Trebuchet", halign="center", $fs=nozzle_d/2);
+                }
+
             }
         }
-    }
 
-    for (i=[0:len(sensors)-1]) {
-        sensor = sensors[i];
-        translate([i*spacing + spacing/2, spacing/2, 0]) {
-            // Opening for PIR's lens:
-            lens_d = round_up(sensor[1], nozzle_d);
-            translate([0, 0, -1])
-                cylinder(d=lens_d, h=thickness+2, $fs=nozzle_d/2);
-
-            screw  = sensor[2];
-            screw_l = thickness+2;
-            lr     = sensor[3];
-            ud     = sensor[4];
-            if (screw != "") translate([0, 0, thickness]) {
-                if (lr != 0) {
-                    translate([-lr, -ud]) bolt_hole(screw, screw_l);
-                    translate([ lr, -ud]) bolt_hole(screw, screw_l);
-                }
-                if (ud != 0) {
-                    translate([-lr,  ud]) bolt_hole(screw, screw_l);
-                    translate([ lr,  ud]) bolt_hole(screw, screw_l);
+        // Holes for mounting screws
+        for (i = [0:len(sensors)-1]) {
+            sensor = sensors[i];
+            translate([i*spacing + spacing/2, spacing/2, 0]) {
+                screw  = sensor[2];
+                screw_l = 5;
+                lr     = sensor[3];
+                ud     = sensor[4];
+                if (screw != "") translate([0, 0, thickness]) {
+                    if (lr != 0) {
+                        translate([-lr, -ud]) bolt_hole(screw, screw_l);
+                        translate([ lr, -ud]) bolt_hole(screw, screw_l);
+                    }
+                    if (ud != 0) {
+                        translate([-lr,  ud]) bolt_hole(screw, screw_l);
+                        translate([ lr,  ud]) bolt_hole(screw, screw_l);
+                    }
                 }
             }
-            translate([-spacing/2 + led_d/2 + 1, spacing/2, 0])
-                translate([0, 0, -1]) cylinder(d=led_d, h=thickness+2, $fs=nozzle_d/2);
         }
 
-    translate([spacing*len(sensors)/2, 1, thickness-2])
-        linear_extrude(2+1, convexity=10)
-            text("HAYWARD HAUNTER", size=7, font="Century Gothic:style=Bold", halign="center");
-
+        // Branding.
+        translate([spacing*len(sensors)/2, 1, 0.4])
+            linear_extrude(2+1, convexity=10)
+                text("HAYWARD HAUNTER", size=7, font="Century Gothic:style=Bold", halign="center");
     }
 }
 
+PIR_tester(
+    sensors=[
+        ["Adafruit 189",    23.5,   "M2.5",     28.5/2,     0],
+        ["Adafruit 4871",   12.3,   "",         0,          0],
+        ["HC-SR501",        23.5,   "M2",       29/2,       0],
+        ["Parallax",        23.5,   "M2.5",     29.5/2,     0],
+        ["SparkFun",        22.5,   "M2.5",     23/2,  27.5/2]
+    ]
+);
