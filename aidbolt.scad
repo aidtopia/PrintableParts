@@ -16,27 +16,64 @@ function tpi(x)  = inch(1/x);
 //  [2] close-fit clearance hole diameter
 //  [3] tapping hole diameter
 //  [4] thread pitch
-//  [5] maximum head diameter
-//  [6] head height
-//  [7] flat head diameter
-//  [8] flat head height
-//  [9] maximum nut width (edge to edge, wrench size)
-//  [10] maximum nut thickness (along the bolt axis)
+//  [5] head table
+//  [6] nut table
 
-// This default table provides parameters for common metric and inch machine
+// This default table provides parameters for common inch and metric machine
 // screws, but you can substitute your own table if it conforms to the
 // description above.
 machine_screws = [
-    // name     free-fit    close-fit   tapping     pitch       head_d      head_h      flat_d      flat_h      nut_w       nut_th
-    ["#2-56",   thou( 96),  thou( 89),  thou( 70),  tpi(56),    thou(167),  thou( 63),  thou(162),  thou( 51),  inch(3/16), inch(1/16)],
-    ["#4-40",   thou(120),  thou(116),  thou( 89),  tpi(40),    thou(219),  thou( 80),  thou(212),  thou( 67),  inch(1/4),  inch(3/32)],
-    ["#6-32",   thou(149.5),thou(144),  thou(106.5),tpi(32),    thou(270),  thou( 97),  thou(262),  thou( 83),  inch(5/16), inch(7/64)],
-    ["1/4-20",  thou(266),  thou(257),  thou(201),  tpi(20),    thou(492),  thou(175),  thou(477),  thou(153),  inch(7/16), inch(3/16)],
-    ["M2",      2.4,        2.4,        1.6,        0.40,       4.0,        1.6,        3.8,        1.20,       4.0,        1.6       ],
-    ["M2.5",    2.9,        2.8,        2.1,        0.45,       5.0,        2.0,        4.7,        1.50,       5.0,        2.0       ],
-    ["M3",      3.4,        3.4,        2.5,        0.50,       6.0,        2.4,        5.6,        1.65,       5.5,        2.4       ],
-    ["M4",      4.5,        4.3,        3.5,        0.70,       8.0,        3.1,        7.5,        2.20,       7.0,        3.2       ]
+    // name     free-fit    close-fit   tapping     pitch
+    ["#2-56",   thou( 96),  thou( 89),  thou( 70),  tpi(56),
+        [ // head shape         head_d      head_h      sink
+            ["flat",            thou(162),  thou( 51),  true    ],
+            ["pan",             thou(167),  thou( 63),  false   ]],
+        [ // nut                nut_d       nut_h           sides
+            ["hex",             inch(3/16), inch(1/16),     6       ]]],
+    ["#4-40",   thou(120),  thou(116),  thou( 89),  tpi(40),
+        [ // head shape         head_d      head_h      sink
+            ["flat",            thou(212),  thou( 67),  true    ],
+            ["pan",             thou(219),  thou( 80),  false   ]],
+        [ // nut                nut_d       nut_h           sides
+            ["hex",             inch(1/4),  inch(3/32),     6       ]]],
+    ["#6-32",   thou(149.5),thou(144),  thou(106.5),tpi(32),
+        [ // head shape         head_d      head_h      sink
+            ["flat",            thou(262),  thou( 83),  true    ],
+            ["pan",             thou(270),  thou( 97),  false   ]],
+        [ // nut                nut_d       nut_h           sides
+            ["hex",             inch(5/16), inch(7/64),     6       ]]],
+    ["1/4-20",  thou(266),  thou(257),  thou(201),  tpi(20),
+        [ // head shape         head_d      head_h      sink
+            ["flat",            thou(477),  thou(153),  true    ],
+            ["pan",             thou(492),  thou(175),  false   ]],
+        [ // nut                nut_d       nut_h           sides
+            ["hex",             inch(7/16), inch(3/16),     6       ]]],
+    ["M2",      2.4,        2.4,        1.6,        0.40,
+        [ // head shape         head_d      head_h      sink
+            ["flat",            3.8,        1.20,       true    ],
+            ["pan",             4.0,        1.6,        false   ]],
+        [ // nut                nut_d       nut_h           sides
+            ["hex",             4.0,        1.6,            6       ]]],
+    ["M2.5",    2.9,        2.8,        2.1,        0.45,
+        [ // head shape         head_d      head_h      sink
+            ["flat",            4.7,        1.50,       true],
+            ["pan",             5.0,        2.0,        false   ]],
+        [ // nut                nut_d       nut_h           sides
+            ["hex",             5.0,        2.0,            6       ]]],
+    ["M3",      3.4,        3.4,        2.5,        0.50,
+        [ // head shape         head_d      head_h      sink
+            ["flat",            5.6,        1.65,       true],
+            ["pan",             6.0,        2.4,        false   ]],
+        [ // nut                nut_d       nut_h           sides
+            ["hex",             5.5,        2.4,            6       ]]],
+    ["M4",      4.5,        4.3,        3.5,        0.70,
+        [ // head shape         head_d      head_h      sink
+            ["flat",            7.5,        2.20,       true    ],
+            ["pan",             8.0,        3.1,        false   ]],
+        [ // nut                nut_d       nut_h           sides
+            ["hex",             7.0,        3.2,            6       ]]]
 ];
+
 
 function find_bolt_params(size, table) = find_params(size, table=table);
 
@@ -52,12 +89,17 @@ module bolt_hole(size, l, threads="none", head="proud", table=machine_screws, no
     close_d = bolt[2];
     tap_d   = bolt[3];
     pitch   = bolt[4];
-    head_d  = bolt[5];
-    head_h  = bolt[6];
-    flat_d  = bolt[7];
-    flat_h  = bolt[8];
-    nut_w   = bolt[9];
-    nut_th  = bolt[10];
+    head_table = bolt[5];
+    panhead = find_params("pan", head_table);
+    head_d  = panhead[1];
+    head_h  = panhead[2];
+    flathead = find_params("flat", head_table);
+    flat_d  = flathead[1];
+    flat_h  = flathead[2];
+    nut_table = bolt[6];
+    hexnut_params  = find_params("hex", nut_table);
+    nut_w   = hexnut_params[1];
+    nut_th  = hexnut_params[2];
 
     thread_types = [  //        shaft_d hexnut  pocket
         ["none",                free_d, false,  false],
