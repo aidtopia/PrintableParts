@@ -41,8 +41,9 @@ function remap_key(key, mapping) =
 // `offset`.  If count is not specified, returns the rest of the string (up to
 // a limit to prevent runaway recursion).
 function substr(input, offset, count=99) =
-    count > 0 && offset < len(input) ?
-        str(input[offset], substr(input, offset+1, count-1)) : "";
+    count <= 0 ? "" :
+    offset >= len(input) ? "" :
+    str(input[offset], substr(input, offset+1, count-1));
 
 // Returns a vector of the substrings of `input` separated by the specified
 // `delimiter`.  The substrings exclude the delimiter itself.
