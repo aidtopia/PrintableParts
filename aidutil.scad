@@ -35,6 +35,32 @@ function remap_key(key, mapping) =
     let(mapped = find_params(key, mapping))
         is_undef(mapped) ? key : mapped[1];
 
+// STRING MANIPULATION FUNCTIONS
+
+// Returns a string consisting of `count` characters of `input` starting at
+// `offset`.  If count is not specified, returns the rest of the string (up to
+// a limit to prevent runaway recursion).
+function substr(input, offset, count=99) =
+    count > 0 && offset < len(input) ?
+        str(input[offset], substr(input, offset+1, count-1)) : "";
+
+// Returns a vector of the substrings of `input` separated by the specified
+// `delimiter`.  The substrings exclude the delimiter itself.
+function split(input, delimiter=" ") =
+    assert(len(delimiter) == 1)
+    let (breaks = [-1, each search(delimiter, input, 0)[0], len(input)])
+        [ for (i=[1:len(breaks)-1])
+            let (from = breaks[i-1] + 1, to = breaks[i])
+                if (to > from) substr(input, from, to-from) ];
+
+// Returns a string by concatenating the string versions of the elements of
+// the vector `input`.  You can optionally specify a `joiner` to connect the
+// elements.
+function join(input, joiner="", offset=0) =
+    offset >= len(input) ? "" :
+    offset == 0 ? str(input[0], join(input, joiner, 1)) :
+    str(joiner, input[offset], join(input, joiner, offset+1));
+
 // 2D FUNCTIONS
 
 // Returns coefficients (A, B, C) to represent the line from pt0 to pt1
@@ -135,7 +161,7 @@ function compute_arcs(points) =
             [ F, r, Aprime, Cprime ]
     ];
 
-// Given a list of (x, y, radius) points, this returns a corrsponding list of
+// Given a list of (x, y, radius) points, this returns a corresponding list of
 // (x, y) points that represent the rounded version of the polygon.  The
 // result can be passed directly to OpenSCAD's polygon.
 function rounded_polygon(points) = [
