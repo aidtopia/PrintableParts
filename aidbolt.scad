@@ -241,6 +241,28 @@ module bolt_hole(size, l, threads="none", head="pan", table=machine_screws, nozz
     }
 }
 
+module standoff(size, h, table=machine_screws, nozzle_d=0.4) {
+    bolt = find_bolt_params(size, table=table);
+
+    // Name the bolt parameters.
+    free_d  = bolt[1];
+    close_d = bolt[2];
+    tap_d   = bolt[3];
+    pitch   = bolt[4];
+    head_table = bolt[5];
+    nut_table = bolt[6];
+    
+    head_params = find_params("pan", table=head_table);
+    head_d  = head_params[1];
+    
+    boss_d = max(head_d, tap_d + 3*nozzle_d);
+
+    difference() {
+        translate([0, 0, -0.1]) cylinder(h=h+0.1, d=boss_d, $fs=nozzle_d/2);
+        translate([0, 0, h]) bolt_hole(size, h, "self-tapping");
+    }
+}
+
 // This test shows a cutaway view of several example bolt holes.
 module test() {
     spacing = 9;
