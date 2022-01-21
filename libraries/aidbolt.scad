@@ -196,8 +196,6 @@ module bolt_hole(size, l, threads="none", head="pan", table=machine_screws, nozz
     head_h  = head_params[2];
     sink_h  = head_params[3];
 
-    echo(head_d, head_h, sink_h);
-
     drop    = counterbore ? head_h : 0;
     bevel   = sink_h == 0 && shaft_d == tap_d && l > 4*pitch;
     cone_h  = sink_h > 0 ? sink_h : bevel ? pitch : 0;
