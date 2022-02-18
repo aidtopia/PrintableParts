@@ -109,6 +109,13 @@ function find_bolt_params(size, table) =
            str("bolt size \"", size, "\" not found in table"))
     candidate;
 
+function nut_diameter(nut_w, nut_sides=6, nozzle_d=0.4) =
+    nozzle_d +
+    ((nut_sides % 2) == 0 ?
+        round_up(nut_w / cos(180/nut_sides), nozzle_d) :
+        nut_w);
+
+
 module bolt_hole(size, l, threads="none", head="pan", table=machine_screws, nozzle_d=0.4) {
     bolt = find_bolt_params(size, table=table);
 
@@ -220,10 +227,7 @@ module bolt_hole(size, l, threads="none", head="pan", table=machine_screws, nozz
     
         if (recess || pocket) {
             // Recess or pocket for a nut.
-            nut_d = nozzle_d +
-                ((nut_sides % 2) == 0 ?
-                    round_up(nut_w / cos(180/nut_sides), nozzle_d) :
-                    nut_w);
+            nut_d = nut_diameter(nut_w, nut_sides, nozzle_d);
             protrusion = 2*pitch;
             h = nut_h + protrusion + (pocket ? 0 : 0.1);
             depth = -l - (pocket ? 0 : 0.1);
@@ -239,7 +243,29 @@ module bolt_hole(size, l, threads="none", head="pan", table=machine_screws, nozz
     }
 }
 
-module standoff(size, h, table=machine_screws, nozzle_d=0.4) {
+function boss_diameters(size, table=machine_screws, nozzle_d=0.4) =
+  is_num(size) ? [size, size] :
+    let(bolt = find_bolt_params(size, table=table),
+        tap_d = bolt[3],
+        head_table = bolt[5],
+        head_params = find_params("pan", table=head_table),
+        head_d = head_params[1],
+        top_d = max(head_d, tap_d + 3*nozzle_d),
+        nut_table = bolt[6],
+        nut_params = find_params("hex", table=nut_table),
+        nut_w = nut_params[1],
+        nut_sides = nut_params[3],
+        nut_d = nut_diameter(nut_w, nut_sides, nozzle_d),
+        bottom_d = max(top_d, nut_d + 3*nozzle_d))
+       [ bottom_d, top_d ];
+
+module boss(size, h, table=machine_screws, nozzle_d=0.4) {
+    boss_dias = boss_diameters(size, table, nozzle_d);
+    translate([0, 0, -0.1])
+        cylinder(h=h+0.1, d1=boss_dias[0], d2=boss_dias[1], $fs=nozzle_d/2);
+}
+
+module standoff(size, h, threads="self-tapping", table=machine_screws, nozzle_d=0.4) {
     bolt = find_bolt_params(size, table=table);
 
     // Name the bolt parameters.
@@ -257,7 +283,7 @@ module standoff(size, h, table=machine_screws, nozzle_d=0.4) {
 
     difference() {
         translate([0, 0, -0.1]) cylinder(h=h+0.1, d=boss_d, $fs=nozzle_d/2);
-        translate([0, 0, h]) bolt_hole(size, h, "self-tapping");
+        translate([0, 0, h]) bolt_hole(size, h, threads);
     }
 }
 
@@ -272,7 +298,10 @@ module test() {
     translate([0, $preview ? 0: depth, $preview ? 0 : h])
     rotate([$preview ? 0 : 180, 0, 0])
     difference() {
-        cube([w, depth, h]);
+        union() {
+            cube([w, depth, h]);
+            translate([w + spacing/2, depth/2, 0]) boss("M3", h);
+        }
         translate([-spacing/2, depth/2, 10]) {
             translate(1*i) bolt_hole("M2", h/2, "self-tapping", "flat");
             translate(2*i) bolt_hole("M2.5", h/2, "pocket hex nut", "counterbored pan head");
@@ -280,10 +309,11 @@ module test() {
             translate(4*i) bolt_hole("#2-56", h, "recessed hex nut", head=" oval");
             translate(5*i) bolt_hole("#4-40", h, "self-tapping", "recessed pan");
             translate(6*i) bolt_hole("#6-32", h, "recessed hex nut");
+            translate(7*i) bolt_hole("M3", h+0.1, "recessed hex nut");
         }
         if ($preview) {
             // cutaway
-            translate([-1, -depth/2, -1]) cube([w+2, depth, h+2]);
+            translate([-1, -depth/2, -1]) cube([2*w, depth, h+2]);
         }
     }
 }
