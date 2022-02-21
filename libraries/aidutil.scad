@@ -10,6 +10,8 @@ function drop_front(v) = len(v) > 1 ? [ for (i=[1:len(v)-1]) v[i] ] : [];
 function back(v)  = v[len(v) - 1];
 function drop_back(v)  = len(v) > 1 ? [ for (i=[0:len(v)-2]) v[i] ] : [];
 
+function gcd(a, b) = b == 0 ? a : gcd(b, a%b);
+
 // Just an alias for OpenSCAD's norm.
 function magnitude(v) = norm(v);
 

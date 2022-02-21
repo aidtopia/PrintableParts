@@ -287,6 +287,23 @@ module standoff(size, h, threads="self-tapping", table=machine_screws, nozzle_d=
     }
 }
 
+function length_to_inch(length, denominator=32) =
+    let(numerator = round_up(length*denominator/25.4),
+        whole = floor(numerator / denominator),
+        remainder = numerator - whole*denominator,
+        f = gcd(remainder, denominator),
+        num = remainder/f,
+        den = denominator/f)
+    str(den == 1 ? str(whole) : whole != 0 ? str(whole, "-") : "",
+        str(num, "/", den), "\"");
+
+function length_to_string(length, metric=true) =
+    metric ? str(length, " mm") : length_to_inch(length, 8);
+
+function screw_to_string(size, length) =
+    let(metric = size[0] == "M")
+    str(size, " by ", length_to_string(length, metric));
+
 // This test shows a cutaway view of several example bolt holes.
 module test() {
     spacing = 9;
