@@ -153,7 +153,9 @@ module bolt_hole(size, l, threads="none", head="pan", table=machine_screws, nozz
     thread_synonyms = [
         ["",                "none"],
         ["pilot",           "self-tapping"],
+        ["self tapped",     "self-tapping"],
         ["self tapping",    "self-tapping"],
+        ["self-tapped",     "self-tapping"],
         ["tapped",          "self-tapping"]
     ];
 
