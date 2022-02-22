@@ -121,12 +121,17 @@ function find_bolt_params(size, table) =
            str("bolt size \"", size, "\" not found in table"))
     candidate;
 
+function bolt_head_height(size, head="pan", table=machine_screws) =
+    let(bolt = find_bolt_params(size, table=table),
+        head_table = bolt[5],
+        head_params = find_params(head, head_table))
+    head_params[2] + head_params[3];
+
 function nut_diameter(nut_w, nut_sides=6, nozzle_d=0.4) =
     nozzle_d +
     ((nut_sides % 2) == 0 ?
         round_up(nut_w / cos(180/nut_sides), nozzle_d) :
         nut_w);
-
 
 module bolt_hole(size, l, threads="none", head="pan", table=machine_screws, nozzle_d=0.4) {
     bolt = find_bolt_params(size, table=table);
