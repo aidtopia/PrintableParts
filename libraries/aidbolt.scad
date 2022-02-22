@@ -71,6 +71,18 @@ machine_screws = [
             ["undercut",        thou(262),  thou( 45),  thou(104)   ]],
         [ // nut                nut_w       nut_h           sides
             ["hex",             inch(5/16), inch(7/64),     6       ]]],
+    ["#8-32",   thou(177),  thou(169.5),thou(136),  tpi(32),
+        [ // head shape         head_d      head_h      sink_h
+            ["flat",            thou(312),  thou(  0),  thou(100)   ],
+            ["pan",             thou(322),  thou(115),  thou(  0)   ]],
+        [ // nut                nut_w       nut_h           sides
+            ["hex",             inch(11/32),inch(1/8),      6       ]]],
+    ["#10-24",  thou(201),  thou(196),  thou(149.5),tpi(24),
+        [ // head shape         head_d      head_h      sink_h
+            ["flat",            thou(362),  thou(  0),  thou(116)   ],
+            ["pan",             thou(373),  thou(133),  thou(  0)   ]],
+        [ // nut                nut_w       nut_h           sides
+            ["hex",             inch(3/8),  inch(1/8),     6       ]]],
     ["1/4-20",  thou(266),  thou(257),  thou(201),  tpi(20),
         [ // head shape         head_d      head_h      sink_h
             ["flat",            thou(477),  thou(  0),  thou(153)   ],
