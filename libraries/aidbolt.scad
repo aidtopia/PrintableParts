@@ -47,6 +47,12 @@ function tpi(x)  = inch(1/x);
 // description above.
 machine_screws = [
     // name     free-fit    close-fit   tapping     pitch
+    ["#10-24",  thou(201),  thou(196),  thou(149.5),tpi(24),
+        [ // head shape         head_d      head_h      sink_h
+            ["flat",            thou(362),  thou(  0),  thou(116)   ],
+            ["pan",             thou(373),  thou(133),  thou(  0)   ]],
+        [ // nut                nut_w       nut_h           sides
+            ["hex",             inch(3/8),  inch(1/8),     6       ]]],
     ["#2-56",   thou( 96),  thou( 89),  thou( 70),  tpi(56),
         [ // head shape         head_d      head_h      sink_h
             ["flat",            thou(162),  thou(  0),  thou( 51)   ],
@@ -77,12 +83,6 @@ machine_screws = [
             ["pan",             thou(322),  thou(115),  thou(  0)   ]],
         [ // nut                nut_w       nut_h           sides
             ["hex",             inch(11/32),inch(1/8),      6       ]]],
-    ["#10-24",  thou(201),  thou(196),  thou(149.5),tpi(24),
-        [ // head shape         head_d      head_h      sink_h
-            ["flat",            thou(362),  thou(  0),  thou(116)   ],
-            ["pan",             thou(373),  thou(133),  thou(  0)   ]],
-        [ // nut                nut_w       nut_h           sides
-            ["hex",             inch(3/8),  inch(1/8),     6       ]]],
     ["1/4-20",  thou(266),  thou(257),  thou(201),  tpi(20),
         [ // head shape         head_d      head_h      sink_h
             ["flat",            thou(477),  thou(  0),  thou(153)   ],
