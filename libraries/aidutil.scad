@@ -52,6 +52,16 @@ function substr(input, offset, count=99) =
     offset >= len(input) ? "" :
     str(input[offset], substr(input, offset+1, count-1));
 
+function trim_head(input) =
+  (len(input) > 0 && input[0] == " ") ? trim_head(substr(input, 1)) : input;
+
+function trim_tail(input) =
+  let(length = len(input))
+    (length > 0 && input[length - 1] == " ") ?
+      trim_tail(substr(input, 0, length-1)) : input;
+
+function trim(input) = trim_tail(trim_head(input));
+
 // Returns a vector of the substrings of `input` separated by the specified
 // `delimiter`.  The substrings exclude the delimiter itself.
 function split(input, delimiter=" ") =
@@ -59,7 +69,7 @@ function split(input, delimiter=" ") =
     let (breaks = [-1, each search(delimiter, input, 0)[0], len(input)])
         [ for (i=[1:len(breaks)-1])
             let (from = breaks[i-1] + 1, to = breaks[i])
-                if (to > from) substr(input, from, to-from) ];
+                if (to > from) trim(substr(input, from, to-from)) ];
 
 // Returns a string by concatenating the string versions of the elements of
 // the vector `input`.  You can optionally specify a `joiner` to connect the
