@@ -187,3 +187,16 @@ function rounded_polygon(points) = [
         let (F = a[0], r = a[1], Aprime = a[2], Cprime = a[3])
             each [ Aprime, each arc(F, r, Aprime, Cprime), Cprime]
 ];
+
+// GENERAL MODULES
+
+// Union, difference, or intersection selected by parameter.
+module udi(option="u") {
+    if (option == "i" && $children > 1) {
+        intersection() { children([0]); children([1:$children-1]); }
+    } else if (option == "d" && $children > 1) {
+        difference() { children([0]); children([1:$children-1]); }
+    } else {
+        union() children();
+    }
+}
