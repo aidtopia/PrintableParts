@@ -26,8 +26,8 @@ Mating_Thread = "tapped"; // [none, tapped, recessed hex nut, heat-set insert]
 
 module __Customizer_Limit__ () {}  // End of Customizable Parameters
 
-use <../aidutil.scad>
-use <../aidbolt.scad>
+use <aidutil.scad>
+use <aidbolt.scad>
 
 tophat_35_75_profile = [
     [0, 0],
@@ -157,7 +157,7 @@ module DIN_clip(width=9, nozzle_d=0.4) {
 }
 
 module DIN_low_profile_retaining_tab(width=9, nozzle_d=0.4) {
-    min_th = round_up(2, nozzle_d), 
+    min_th = round_up(2, nozzle_d);
     w = max(width-2, width-2*min_th);
     thickness = round_up(2, nozzle_d);
     cylinder(h=10, d=thickness, $fs=nozzle_d/2);
@@ -192,4 +192,4 @@ module DIN_adapter(width=9, nozzle_d=0.4) {
     }
 }
 
-DIN_low_profile_retaining_tab(Clip_Width, nozzle_d=Nozzle_Size);
+DIN_clip(Clip_Width, nozzle_d=Nozzle_Size);
