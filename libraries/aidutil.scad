@@ -164,6 +164,9 @@ function compute_arcs(points) =
                 // The dot product of unit vectors is equal to the cosine of
                 // the angle between them.
                 costheta = Fhat*Ahat,
+        
+                // Since a half-angle is 180 degrees or less, the sine of
+                // theta is non-negative.
                 sintheta = sqrt(1 - costheta*costheta),
 
                 // Compute F, the focus (center) of the circle needed to make
@@ -187,6 +190,7 @@ function rounded_polygon(points) = [
         let (F = a[0], r = a[1], Aprime = a[2], Cprime = a[3])
             each [ Aprime, each arc(F, r, Aprime, Cprime), Cprime]
 ];
+
 
 // GENERAL MODULES
 
