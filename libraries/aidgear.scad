@@ -1,6 +1,11 @@
 // My own implementations of gears for OpenSCAD.
 // Adrian McCarthy 2022-05-21
 
+// Useful information I found about involute gears:
+// https://ciechanow.ski/gears/
+// https://khkgears.net/new/gear_knowledge/abcs_of_gears-b/basic_gear_terminology_calculation.html
+// and a few pages on Wikipedia (of course).
+
 function radians(degrees) = PI * degrees / 180;
 function degrees(radians) = 180 * radians / PI;
 
@@ -98,7 +103,7 @@ function spur_gear(
     // Backlash shaves a little off of each tooth, leaving the gaps
     // slightly wider than the teeth themselves.
     backlash=0,
-    // Clearance increases the dedendum (lowering the root circle).
+    // Clearance increases the dedendum (lowering of the root circle).
     clearance=0.25,  // ISO value
     // Name lets you name individual gears to distinguish them in
     // OpenSCAD's console output.
@@ -146,7 +151,7 @@ function spur_gear(
         tooth_width = PI * module_size / 2 - backlash,
         
         // Tooth width can also be expressed as the angle subtended.
-        nominal_tooth_angle = 360 * tooth_width / (2*PI*pitch_r),
+        nominal_tooth_angle = degrees(tooth_width / pitch_r),
 
         // Because the involute is drawn from the base circle, we
         // need to adjust the `nominal_tooth_angle` to compensate for
@@ -206,7 +211,7 @@ function spur_gear(
 
 module bore(h=1, d=1, nozzle_d=0.4) {
     difference() {
-        union() children();
+        union() { children(); }
         translate([0, 0, -0.01])
             cylinder(h=h+0.02, d=d+nozzle_d, $fs=nozzle_d/2);
     }
