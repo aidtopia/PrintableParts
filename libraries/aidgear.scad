@@ -59,6 +59,11 @@ function flipped_points(points) = [
             flipped_point(pt)
 ];
 
+function mirrored_point(pt) = [ -pt.x, pt.y ];
+function mirrored_points(points) = [
+    for (pt = points) mirrored_point(pt)
+];
+
 module mark_point(pt) {
     translate([pt.x, pt.y]) circle(r=0.5);
 }
@@ -88,7 +93,7 @@ function test(foo=1) =
     assert(foo > 0, "foo much be greater than 0")
     [ for (i = [foo:3*foo]) i ];
 
-function spur_gear(
+function spur_gear_profile(
     number_of_teeth=15,
     // ISO defines compatible tooth sizes using a ratio called
     // the module.  Since `module` is a keyword in OpenSCAD, we'll
@@ -217,25 +222,81 @@ module bore(h=1, d=1, nozzle_d=0.4) {
     }
 }
 
+module spur_gear(
+    number_of_teeth=15,
+    // ISO defines compatible tooth sizes using a ratio called
+    // the module.  Since `module` is a keyword in OpenSCAD, we'll
+    // call it `module_size`.  Note that this is considered unitless
+    // because `pitch_r` is assumed to be in millimeters.
+    module_size=2,
+    // The pressure angle is the direction of the force vector
+    // between teeth of meshed gears.  Common pressure angles are
+    // usually in the range of 15-20 degrees, but 3D printed gears
+    // benefit from somewhat larger pressure angles.
+    pressure_angle=28,
+    // Backlash shaves a little off of each tooth, leaving the gaps
+    // slightly wider than the teeth themselves.
+    backlash=0,
+    // Clearance increases the dedendum (lowering of the root circle).
+    clearance=0.25,  // ISO value
+    // Name your gears to distinguish them in OpenSCAD's console output.
+    name="spur gear"
+) {
+    profile =
+        spur_gear_profile(number_of_teeth, module_size, pressure_angle,
+                          backlash, clearance, name);
+    pitch_r = module_size * number_of_teeth / 2;
+    base_r = pitch_r * cos(pressure_angle);
+    dedendum = (1 + clearance) * module_size;
+    root_r = pitch_r - dedendum;
+
+    difference() {
+        linear_extrude(4, convexity=10) polygon(profile);
+        translate([0, 0, 2.5]) linear_extrude(4, convexity=10) {
+            rotate([0, 0, -90]) {
+                translate([0, root_r/2]) scale(pitch_r/50) union() {
+                    translate([0, 7])
+                    text(name, size=10, font="Liberation Sans:style=Bold",
+                         halign="center", valign="center", spacing=1.1);
+                    translate([0, -5])
+                    text(str("m", module_size, "   α", pressure_angle, "°"),
+                         size=10, font="Liberation Sans:style=Bold", halign="center", valign="center");
+                }
+                translate([0, -root_r/2]) scale(pitch_r/50) union() {
+                    translate([0, -7])
+                    text(str("r", pitch_r, "mm"),
+                         size=10, font="Liberation Sans:style=Bold", halign="center", valign="center");
+                    translate([0, 5])
+                    text(str("n", number_of_teeth),
+                         size=10, font="Liberation Sans:style=Bold", halign="center", valign="center");
+                }
+
+                if (module_size >= 5) {
+                    for (i = [1:number_of_teeth]) {
+                        angle = -(i-1) * 360 / number_of_teeth;
+                        rotate([0, 0, angle]) translate([0, root_r])
+                        text(str(i), size=module_size,
+                             halign="center", valign="bottom");
+                    }
+                } else {
+                    translate([0, root_r + module_size/2])
+                        square(module_size, center=true);
+                }
+            }
+        }
+    }
+}
+
+bore_d = 3.175;
 color("white")
-    bore(d=4, h=4)
-        linear_extrude(3, convexity=10)
-            polygon(
-                spur_gear(number_of_teeth=11,
-                          module_size=2,
-                          name="pinion"));
+    bore(d=bore_d, h=4) spur_gear(number_of_teeth=11, module_size=2, name="pinion");
 color("yellow") translate([35, 0, 0])
-    bore(d=4, h=4)
-        linear_extrude(3, convexity=10)
-            polygon(
-                spur_gear(number_of_teeth=23,
-                          module_size=2,
-                          name="G1"));
+    bore(d=bore_d, h=4) spur_gear(number_of_teeth=23, module_size=2, name="G1");
 
 color("green") translate([-40, 0, 0]) {
     linear_extrude(2) circle(r=25.4);
     linear_extrude(7) {
-        translate([-34/2, 0, 0]) circle(d=4, $fs=0.2);
-        translate([ 34/2, 0, 0]) circle(d=4, $fs=0.2);
+        translate([-34/2, 0, 0]) circle(d=bore_d, $fs=0.2);
+        translate([ 34/2, 0, 0]) circle(d=bore_d, $fs=0.2);
     }
 }
