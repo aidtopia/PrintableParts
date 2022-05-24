@@ -6,25 +6,28 @@
 // https://khkgears.net/new/gear_knowledge/abcs_of_gears-b/basic_gear_terminology_calculation.html
 // and a few pages on Wikipedia (of course).
 
-function radians(degrees) = PI * degrees / 180;
-function degrees(radians) = 180 * radians / PI;
+function radians_from_degrees(degrees) = PI * degrees / 180;
+function degrees_from_radians(radians) = 180 * radians / PI;
 
 function circle_points(r=1, start_angle=0, stop_angle=360) =
     let (
-        degrees = stop_angle - start_angle,
-        step_a = ($fa > 0) ? ($fa/degrees) : 1,
-        step_s = ($fs > 0) ? $fs / (2*PI*r*degrees/360) : 1,
+        range = stop_angle - start_angle,
+        step_a = ($fa > 0) ? ($fa/range) : 1,
+        step_s = ($fs > 0) ? $fs / (2*PI*r*range/360) : 1,
         step   = ($fn > 0) ? 1/$fn : min(step_a, step_s)
     )
     [
         for (i = [0:step:1])
-            let (theta = start_angle + i*degrees)
+            let (theta = start_angle + i*range)
                 [ r*cos(theta), r*sin(theta) ]
     ];
 
 function involute_point(base_r=1, angle=0) =
-    let (s=sin(angle), c=cos(angle), theta=radians(angle))
-        [base_r*(c + theta*s), base_r*(s - theta*c)];
+    let (
+        s=sin(angle), c=cos(angle),
+        theta=radians_from_degrees(angle)
+    )
+    [ base_r*(c + theta*s), base_r*(s - theta*c) ];
 
 function involute_points(base_r=1, start_angle=0, stop_angle=360) =
     let(range = stop_angle - start_angle,
@@ -42,7 +45,8 @@ function involute_points(base_r=1, start_angle=0, stop_angle=360) =
 // Remember that the angle returned is the one for generating the
 // involute.  It does not indicate where it intersects the circle.
 function intersect_involute_circle(base_r, r) =
-    let (d = r/base_r, theta = sqrt(d*d - 1)) degrees(theta);
+    let (d = r/base_r, theta = sqrt(d*d - 1))
+        degrees_from_radians(theta);
 
 function rotated_point(pt, angle) =
     let (s=sin(angle), c=cos(angle))
@@ -104,10 +108,10 @@ function spur_gear_profile(
     // between teeth of meshed gears.  Common pressure angles are
     // usually in the range of 15-20 degrees, but 3D printed gears
     // benefit from somewhat larger pressure angles.
-    pressure_angle = 28,
+    pressure_angle=28,
     // Backlash shaves a little off of each tooth, leaving the gaps
     // slightly wider than the teeth themselves.
-    backlash=0,
+    backlash_angle=0,
     // Clearance increases the dedendum (lowering of the root circle).
     clearance=0.25,  // ISO value
     // Name lets you name individual gears to distinguish them in
@@ -122,20 +126,31 @@ function spur_gear_profile(
            "spur_gear: module size must be positive")
     assert(0 < pressure_angle && pressure_angle < 90,
            "spur_gear: pressure angle must be 0-90 degrees")
+
+    let (minimum_teeth = floor(2 / pow(sin(pressure_angle), 2)))
+    assert(number_of_teeth >= minimum_teeth,
+           str("spur_gear: ", minimum_teeth, " is the minimum number ",
+               "of teeth to avoid undercuts given a pressure angle of ",
+               pressure_angle, "°"))
+
     assert(clearance >= 0,
            "spur_gear: clearance cannot be negative")
 
     let (
-        // The pitch circle, sometimes called the reference circle, is
-        // the size of the equivalent toothless disc if we were using
-        // discs instead of gears.
-        pitch_r = module_size * number_of_teeth / 2,
-
         // In the U.S., the tooth size is often given in diametral
         // pitch, which is just the reciprocal of the `module_size` with
-        // a millimeter-to-inch conversion.  This is just for
-        // documentation at this point.
+        // a millimeter-to-inch conversion.
         diametral_pitch = 25.4 / module_size,
+        
+        // Circular pitch (also called the reference pitch) is the arc
+        // distance between corresponding points on adjacent teeth.
+        circular_pitch = module_size * PI,
+
+        // The pitch circle, sometimes called the reference circle, is
+        // the size of the equivalent toothless disc if we were using
+        // toothless discs instead of gears.
+        pitch_d = module_size * number_of_teeth,
+        pitch_r = pitch_d / 2,
 
         // The addendum is how far beyond the pitch circle the tips of
         // the teeth extend.
@@ -152,11 +167,13 @@ function spur_gear_profile(
         // the tooth profile begins.
         base_r = pitch_r * cos(pressure_angle),
 
-        // The width of a tooth is measured at the pitch circle.
-        tooth_width = PI * module_size / 2 - backlash,
+        // The nominal width of a tooth is half of the circular pitch
+        // (because the other half is the gap between adjacent teeth).
+        nominal_tooth_width = circular_pitch / 2,
         
-        // Tooth width can also be expressed as the angle subtended.
-        nominal_tooth_angle = degrees(tooth_width / pitch_r),
+        // But we want the tooth width in terms of an angle.  Note that
+        // the backlash angle is typically very small (or 0).
+        nominal_tooth_angle = (360 / number_of_teeth - backlash_angle) / 2,
 
         // Because the involute is drawn from the base circle, we
         // need to adjust the `nominal_tooth_angle` to compensate for
@@ -191,14 +208,21 @@ function spur_gear_profile(
                 [[root_r, 0], each inv_path] : inv_path,
 
         flipped = flipped_points(path)
+        
+        // TODO fillet at root circle
+        // TODO tip relief
+        // TODO crowning of tooth surface
     )
     
     assert(root_r > 0)
+
     echo(str("\n--- ", name, " ---\n",
-             "teeth:  \t\t", number_of_teeth, "\n",
-             "module:\t\t", module_size, " mm/tooth\n",
+             "tooth count:\t", number_of_teeth, "\n",
+             "gear size:\n",
+             "  module:\t", module_size, " mm\n",
+             "  circular pitch:\t", circular_pitch, " mm tooth-to-tooth\n",
+             "  diametral pitch:\t", diametral_pitch," teeth/inch\n",
              "pressure angle:\t", pressure_angle, " degrees\n",
-             "diametral pitch:\t", diametral_pitch, " teeth/inch\n",
              "pitch radius:\t", pitch_r, " mm\n",
              "outer radius:\t", addendum_r, " mm\n"))
 
@@ -300,3 +324,5 @@ color("green") translate([-40, 0, 0]) {
         translate([ 34/2, 0, 0]) circle(d=bore_d, $fs=0.2);
     }
 }
+
+//test = spur_gear_profile(3, pressure_angle=20);  // should assert
