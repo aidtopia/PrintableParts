@@ -50,7 +50,7 @@ module slot_filler(w1=4.3, w2=3.4, h=7, th=2, clearance=0) {
 module tip_plug(nozzle_d=0.4) {
     // These inner bits conform to the opening of the
     // dispenser nozzle.
-    cylinder(h=8, d=11, $fs=nozzle_d/2);
+    cylinder(h=8, d=9.8, $fs=nozzle_d/2);
     for (theta = [36:72:360]) {
         rotate([0, 0, theta]) translate([4, 0, 0])
             slot_filler(th=3, clearance=-nozzle_d);
