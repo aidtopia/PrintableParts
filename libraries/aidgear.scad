@@ -9,6 +9,20 @@
 function radians_from_degrees(degrees) = PI * degrees / 180;
 function degrees_from_radians(radians) = 180 * radians / PI;
 
+// Internally, we compute gear parameters in terms of its ISO module,
+// but users might want to specify the gear size in terms of pitch.
+
+// The metric module is a base unit in millimeters.
+function m(iso_module) = iso_module;
+
+// The circular pitch is the distance from the center of one tooth to
+// the center of an adjacent tooth, measured along the pitch circle.
+function CP(circular_pitch) = circular_pitch / PI;
+
+// The diametral pitch, commonly used in the U.S. and U.K., is the
+// reciprocal of the module, and is specified in inches.
+function DP(diametral_pitch) = 25.4 / diametral_pitch;
+
 function circle_points(r=1, start_angle=0, stop_angle=360) =
     let (
         range = stop_angle - start_angle,
@@ -31,7 +45,7 @@ function involute_point(base_r=1, angle=0) =
 
 function involute_points(base_r=1, start_angle=0, stop_angle=360) =
     let(range = stop_angle - start_angle,
-        facets = $fn > 0 ? $fn : 10,
+        facets = $fn > 0 ? $fn : 7,
         step = range / facets)
     [
         for (angle = [start_angle:step:stop_angle])
@@ -101,9 +115,9 @@ function spur_gear_profile(
     number_of_teeth=15,
     // ISO defines compatible tooth sizes using a ratio called
     // the module.  Since `module` is a keyword in OpenSCAD, we'll
-    // call it `module_size`.  Note that this is considered unitless
+    // call it `iso_module`.  Note that this is considered unitless
     // because `pitch_r` is assumed to be in millimeters.
-    module_size=2,
+    iso_module=2,
     // The pressure angle is the direction of the force vector
     // between teeth of meshed gears.  Common pressure angles are
     // usually in the range of 15-20 degrees, but 3D printed gears
@@ -122,7 +136,7 @@ function spur_gear_profile(
            "spur_gear: number of teeth must be positive")
     assert(number_of_teeth == floor(number_of_teeth),
            "spur_gear: number of teeth must be an integer")
-    assert(module_size > 0,
+    assert(iso_module > 0,
            "spur_gear: module size must be positive")
     assert(0 < pressure_angle && pressure_angle < 90,
            "spur_gear: pressure angle must be 0-90 degrees")
@@ -138,29 +152,29 @@ function spur_gear_profile(
 
     let (
         // In the U.S., the tooth size is often given in diametral
-        // pitch, which is just the reciprocal of the `module_size` with
+        // pitch, which is just the reciprocal of the `iso_module` with
         // a millimeter-to-inch conversion.
-        diametral_pitch = 25.4 / module_size,
+        diametral_pitch = 25.4 / iso_module,
         
         // Circular pitch (also called the reference pitch) is the arc
         // distance between corresponding points on adjacent teeth.
-        circular_pitch = module_size * PI,
+        circular_pitch = iso_module * PI,
 
         // The pitch circle, sometimes called the reference circle, is
         // the size of the equivalent toothless disc if we were using
         // toothless discs instead of gears.
-        pitch_d = module_size * number_of_teeth,
+        pitch_d = iso_module * number_of_teeth,
         pitch_r = pitch_d / 2,
 
         // The addendum is how far beyond the pitch circle the tips of
         // the teeth extend.
-        addendum = 1.00 * module_size,  // ISO definition
+        addendum = 1.00 * iso_module,  // ISO definition
         addendum_r = pitch_r + addendum,
 
         // The dedendum is the radial distance from the pitch circle to
         // the bottoms of the teeth.  This "gum line" is called the
         // root circle.
-        dedendum = (1 + clearance) * module_size,
+        dedendum = (1 + clearance) * iso_module,
         root_r = pitch_r - dedendum,
 
         // The base circle is the point where the involute part of the
@@ -219,7 +233,7 @@ function spur_gear_profile(
     echo(str("\n--- ", name, " ---\n",
              "tooth count:\t", number_of_teeth, "\n",
              "gear size:\n",
-             "  module:\t", module_size, " mm\n",
+             "  module:\t", iso_module, " mm\n",
              "  circular pitch:\t", circular_pitch, " mm tooth-to-tooth\n",
              "  diametral pitch:\t", diametral_pitch," teeth/inch\n",
              "pressure angle:\t", pressure_angle, " degrees\n",
@@ -250,9 +264,8 @@ module spur_gear(
     number_of_teeth=15,
     // ISO defines compatible tooth sizes using a ratio called
     // the module.  Since `module` is a keyword in OpenSCAD, we'll
-    // call it `module_size`.  Note that this is considered unitless
-    // because `pitch_r` is assumed to be in millimeters.
-    module_size=2,
+    // call it `iso_module`.
+    iso_module=2,
     // The pressure angle is the direction of the force vector
     // between teeth of meshed gears.  Common pressure angles are
     // usually in the range of 15-20 degrees, but 3D printed gears
@@ -260,18 +273,18 @@ module spur_gear(
     pressure_angle=28,
     // Backlash shaves a little off of each tooth, leaving the gaps
     // slightly wider than the teeth themselves.
-    backlash=0,
+    backlash_angle=0,
     // Clearance increases the dedendum (lowering of the root circle).
     clearance=0.25,  // ISO value
     // Name your gears to distinguish them in OpenSCAD's console output.
     name="spur gear"
 ) {
     profile =
-        spur_gear_profile(number_of_teeth, module_size, pressure_angle,
-                          backlash, clearance, name);
-    pitch_r = module_size * number_of_teeth / 2;
+        spur_gear_profile(number_of_teeth, iso_module, pressure_angle,
+                          backlash_angle, clearance, name);
+    pitch_r = iso_module * number_of_teeth / 2;
     base_r = pitch_r * cos(pressure_angle);
-    dedendum = (1 + clearance) * module_size;
+    dedendum = (1 + clearance) * iso_module;
     root_r = pitch_r - dedendum;
 
     difference() {
@@ -283,7 +296,7 @@ module spur_gear(
                     text(name, size=10, font="Liberation Sans:style=Bold",
                          halign="center", valign="center", spacing=1.1);
                     translate([0, -5])
-                    text(str("m", module_size, "   α", pressure_angle, "°"),
+                    text(str("m", iso_module, "   α", pressure_angle, "°"),
                          size=10, font="Liberation Sans:style=Bold", halign="center", valign="center");
                 }
                 translate([0, -root_r/2]) scale(pitch_r/50) union() {
@@ -295,16 +308,16 @@ module spur_gear(
                          size=10, font="Liberation Sans:style=Bold", halign="center", valign="center");
                 }
 
-                if (module_size >= 5) {
+                if (iso_module >= 5) {
                     for (i = [1:number_of_teeth]) {
                         angle = -(i-1) * 360 / number_of_teeth;
                         rotate([0, 0, angle]) translate([0, root_r])
-                        text(str(i), size=module_size,
+                        text(str(i), size=iso_module,
                              halign="center", valign="bottom");
                     }
                 } else {
-                    translate([0, root_r + module_size/2])
-                        square(module_size, center=true);
+                    translate([0, root_r + iso_module/2])
+                        square(iso_module, center=true);
                 }
             }
         }
@@ -312,10 +325,15 @@ module spur_gear(
 }
 
 bore_d = 3.175;
-color("white")
-    bore(d=bore_d, h=4) spur_gear(number_of_teeth=11, module_size=2, name="pinion");
-color("yellow") translate([35, 0, 0])
-    bore(d=bore_d, h=4) spur_gear(number_of_teeth=23, module_size=2, name="G1");
+pinion = spur_gear_profile(number_of_teeth=11, iso_module=2, name="pinion");
+G1 = spur_gear_profile(number_of_teeth=23, iso_module=2, name="G1");
+color("white") bore(d=bore_d, h=4) linear_extrude(4, convexity=10)
+    polygon(pinion);
+
+translate([35, 0, 0]) {
+    color("yellow") bore(d=bore_d, h=4) linear_extrude(4, convexity=10)
+        polygon(G1);
+}
 
 color("green") translate([-40, 0, 0]) {
     linear_extrude(2) circle(r=25.4);
@@ -325,4 +343,3 @@ color("green") translate([-40, 0, 0]) {
     }
 }
 
-//test = spur_gear_profile(3, pressure_angle=20);  // should assert
