@@ -2,9 +2,9 @@
 // Adrian McCarthy 2022-05-21
 
 // Useful references I found about gear nomenclature, calculations, and
-// involute tooth shapes.
-// https://ciechanow.ski/gears/
-// https://khkgears.net/new/gear_knowledge/abcs_of_gears-b/basic_gear_terminology_calculation.html
+// involute tooth shapes:
+// * https://ciechanow.ski/gears/
+// * https://khkgears.net/new/gear_knowledge/gear_technical_reference/
 // and a few pages on Wikipedia (of course).
 
 // GEAR DEFINITIONS
@@ -99,7 +99,6 @@ function AG_as_module(
     !is_undef(diametral_pitch) ? 25.4 / diametral_pitch :
     assert(!is_undef(default),
            "AG: tooth size must be specified with module, CP, or DP")
-    echo(str("AG: using default of ", default, " mm for iso_module"))
     default;
 
 
@@ -120,20 +119,32 @@ module AG_echo(g) {
 }
 
 function AG_circular_pitch(g)   = PI * AG_module(g);
+
 function AG_diametral_pitch(g)  = 25.4 / AG_module(g);
-function AG_pitch_diameter(g)   = AG_module(g) * AG_tooth_count(g);
+
+function AG_pitch_diameter(g)   =
+    let (type = AG_type(g))
+    type == "AG spur" ? AG_module(g) * AG_tooth_count(g) :
+    type == "AG rack" ? 0 :
+    undef;
+
+function AG_outer_diameter(g)   = AG_pitch_diameter(g) + 2*AG_addendum(g);
+
+function AG_inner_diameter(g)   = AG_pitch_diameter(g) - 2*AG_dedendum(g);
+
 function AG_addendum(g)         = 1.00 * AG_module(g);
+
 function AG_dedendum(g)         = (1.00 + AG_clearance(g)) * AG_module(g);
 
 // Returns true if the two gears can mesh.
-function AG_are_compatible(g1, g2) =
+function AG_compatible(g1, g2) =
     AG_module(g1) == AG_module(g2) &&
     AG_pressure_angle(g1) == AG_pressure_angle(g2);
 
 // The center distance is the spacing required between the centers of two
 // gears to have them mesh properly.
 function AG_center_distance(g1, g2) =
-    assert(AG_are_compatible(g1, g2),
+    assert(AG_compatible(g1, g2),
            "AG: cannot compute the center distance for incompatible gears")
     (AG_pitch_diameter(g1) + AG_pitch_diameter(g2)) / 2;
 
