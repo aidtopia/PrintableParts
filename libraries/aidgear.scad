@@ -133,7 +133,9 @@ function AG_are_compatible(g1, g2) =
 // The center distance is the spacing required between the centers of two
 // gears to have them mesh properly.
 function AG_center_distance(g1, g2) =
-    (AG_pitch_diameter(g1) + AG_pitch_diameter(g2))/2;
+    assert(AG_are_compatible(g1, g2),
+           "AG: cannot compute the center distance for incompatible gears")
+    (AG_pitch_diameter(g1) + AG_pitch_diameter(g2)) / 2;
 
 
 // Returns a list of points forming a 2D-polygon of the gear teeth.
@@ -339,4 +341,5 @@ translate([0, -35, 0]) {
     }
 }
 
-translate([-23*2*PI/2, 0, 0]) color("orange") polygon(AG_tooth_profile(G2));
+color("orange") translate([-23*2*PI/2, 0, 0])
+    linear_extrude(3, convexity=10) polygon(AG_tooth_profile(G2));
