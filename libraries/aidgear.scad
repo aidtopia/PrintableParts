@@ -76,11 +76,12 @@ function AG_define_universal(
     assert(clearance >= 0,
            "AG: clearance cannot be negative")
 
-    let (minimum_teeth = floor(2 / pow(sin(pressure_angle), 2)))
-    assert(tooth_count >= minimum_teeth,
-           str("AG: ", minimum_teeth, " is the minimum number of ",
-               "teeth to avoid undercuts given a pressure angle of ",
-               pressure_angle, "°"))
+//    let (minimum_teeth = floor(2 / pow(sin(pressure_angle), 2)))
+//    assert(tooth_count >= minimum_teeth,
+//           str("AG: ", minimum_teeth, " is the minimum number of ",
+//               "teeth to avoid undercuts given a pressure angle of ",
+//               pressure_angle, "°"))
+
     [
         type, name, tooth_count, iso_module,
         pressure_angle, backlash_angle, clearance
