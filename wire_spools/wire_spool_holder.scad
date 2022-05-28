@@ -1,5 +1,25 @@
 // Wire Spool Holder
-// Adrian McCarthy 2020-12-16
+// Adrian McCarthy 2022-05-01
+
+// Diameter of the wire on the spool, including the insulation. Overestimates are safer than underestimates. (mm)
+Wire_Diameter = 2; // [1:0.1:5]
+
+// Width of the spool. (mm)
+Spool_Width = 22; // [12:2:40]
+
+// Outer diameter of the spool itself. (mm)
+Spool_Outer_Diameter = 55; // [25:5:100]
+
+// Inner diameter of the spool. (mm)
+Spool_Inner_Diameter = 25.5; // [12.5:0.5:50]
+
+// Make the spool holder mountable to 35mm DIN rail.
+DIN_Mount = true;
+
+// Some dimensions will be optimized according to the diameter of the nozzle on your 3D printer. If unknown, the default (0.4) should be adequate. (mm)
+Nozzle_Diameter = 0.4; // [0.1:0.1:1.0]
+
+module __Customizer_Limit__ () {}
 
 // Goals:
 // * parameterized for a variety of spool sizes
@@ -11,6 +31,9 @@
 // * robust enough for electronics bench work without wasting plastic
 // * able to print without supports
 // * has a place for a label
+
+use <aidutil.scad>
+use <aidbolt.scad>
 
 xhat = [1, 0, 0];
 yhat = [0, 1, 0];
@@ -28,52 +51,13 @@ module spool(w, od, id) {
     }
 }
 
-// A key profile can be extruded to make a key or corresponding slot.
-// Another shape could be used, but this wedge shape can be printed without
-// supports in any orientation.  This shape does not interlock, but it is
-// fine for aligning parts and constraining sliding motion to the extrusion
-// direction.
-module key_profile(height, width=0, clearance=0, extend=0.01) {
-    w = max(width, height);
-    y0 = 0;
-    y1 = height - clearance/2;
-    x1 = (w + clearance/2)/2;
-    x0 = max(0, x1 - y1/2);
-    
-    polygon([
-        [ x1, y0 - extend],
-        [ x1, y0],
-        [ x0, y1],
-        [-x0, y1],
-        [-x1, y0],
-        [-x1, y0 - extend]
-    ]);
-}
-
-module capsule(d, length=0, clearance=0) {
-    dia = d + clearance/2;
-    offset = [0, 0, (length ? (length-d)/2 : d)];
-    hull() {
-        translate(-offset) sphere(d=dia);
-        translate( offset) sphere(d=dia);
-    }
-}
-
 // w, od, and id describe the size of the spool to be held
-module spool_holder(wire_d=3, w=22, od=55, id=25.5, wall_th=3, clearance=1) {
-    // The spool holder consists of a chassis and a spindle.  The chassis is
-    // composed of:
-    //  * a base plate, defined a front and back "foot"
-    //  * a hub that supports the spindle
-    //  * a guide for the wire being unspooled
-    //  * a place for a label.
-    // The spindle is a separate piece that's inserted into the spool to be
-    // held and then slid into place in the chassis.
-
-    // We define a corner diameter for aesthetics and to avoid some sharp
-    // edges.
-    corner_d = max(3, wall_th);
-
+module spool_holder(wire_d=3, w=22, od=55, id=25.5, wall_th=3, din_mount=false, nozzle_d=0.4) {
+    clearance = min(1, 2*nozzle_d);
+    corner_r = wall_th/2;
+    
+    base_th = wall_th;
+    
     // Our spindle's diameter is slightly smaller than id so that the spool
     // can spin freely.
     spindle_d = id - clearance;
@@ -82,198 +66,239 @@ module spool_holder(wire_d=3, w=22, od=55, id=25.5, wall_th=3, clearance=1) {
     play = (id - spindle_d)/2;
     
     // The spindle must be high enough that the spool clears the base plate.
-    // Note that most of the assembly process has the spindle centered on the
-    // origin, and we translate by spindle_zoffset at the end.
-    spindle_zoffset = wall_th + clearance + od/2 + play;
+    spindle_zoffset = base_th + clearance + od/2 + play;
 
-    // We flatten the bottom of the spindle so it can be printed without
-    // supports.
-    spindle_crop = 0.66*spindle_d/2;
+    // We'll flatten the bottom of the spindle so it can be printed without
+    // supports, require less material, and not roll off the desk.  (Note
+    // that the play in upward directions will be even more than our
+    // current `play` variable.  Fortunately, that doesn't matter for the
+    // dimensions we must compute.)
+    spindle_crop = spindle_d/3;
     
-    // The spindle has keys on the ends that mate with slots in the chassis.
-    key_h = max(0.9*wall_th, 1.75);
-    key_w = max(key_h, min(spindle_d, 2*wall_th));
-
+    spindle_w = clearance + w + clearance;
+    
     // The hub supports the spindle.
-    hub_d = spindle_d;
+    hub_d = id + clearance;
 
     // The overall width of the chassis.
-    width = wall_th + clearance + w + clearance + wall_th;
+    width = wall_th + spindle_w + wall_th;
     right = width/2;
     left = -right;
 
+    label_h = 15;  // about 1/2" for p-touch labels
+    wire_h = max(wall_th, 3*wire_d/2);
+    guide_h = base_th + label_h + wire_h;
+    guide_angle = din_mount ? 35 : 15;
+    guide_y = guide_h * cos(guide_angle);
+
     // The back of the bracket extends just past the back of the spool.
     back = od/2 + play + clearance;
-    
-    guide_h = max(wire_d + corner_d, 5);
-    guide_th = max(wall_th, 3);
-    
-    // The guide must be far enough forward that the spool can clear it when
-    // lifted straight up.
-    guide_y = -(od/2 + clearance + guide_th);
-    // Ideally, the guide height is even with the top of the spool.
-    guide_z = od/2 - play;
+    // The front of the bracket extends a bit farther to ensure the spool
+    // doesn't hit the guide.
+    front = -(back + sin(guide_angle)*guide_h);
+    depth = back - front + wall_th;
 
-    label_h = 13;  // about 1/2" for p-touch labels
-
-    // The front of the bracket must be far enough forward that drag on
-    // the guide is unlikely to tip the bracket.
-    front = min(-back, guide_y);
-    depth = back - front;
-
-    bottom = -(od/2 + play + clearance + wall_th);
-    top = guide_z + guide_h/2;
+    top = hub_d/2;
+    bottom = 0 - od/2 - play - clearance - base_th;
     height = top - bottom;
 
-    module corner(d=corner_d) {
-        rotate(90*yhat) cylinder(d=d, h=width, center=true);
+    hub         = [0, 0, hub_d/2];
+    back_foot   = [back, bottom + corner_r, corner_r];
+    front_foot  = [front, bottom + corner_r, corner_r];
+    guide_top   = [-back, bottom + corner_r + guide_y, corner_r];
+
+    // 35mm DIN rail dimensions
+    din_notch_size = 5 + nozzle_d;
+    din_notch_depth = 4;
+    din_rail_th = 1 + nozzle_d;
+    din_hook_depth = din_notch_depth - din_rail_th;
+
+    echo(str("Spool Holder Dimensions: ", width, " mm wide; ", depth, " mm deep; ", height, " mm high"));
+    
+    module profile() {
+        points = [ front_foot, guide_top, hub, back_foot ];
+        hull()
+            for (p=points)
+                translate([p.x, p.y]) circle(r=p.z, $fs=nozzle_d/2);
     }
     
-    module hub() {
-        rotate(90*yhat) cylinder(d=hub_d, h=width, center=true);
+    module profile_envelope() {
+        rotate([90, 0, 0]) rotate([0, 90, 0])
+            linear_extrude(width, center=true)
+                profile();
     }
     
-    module base() {
-        translate((bottom + corner_d/2)*zhat) union() {
-            translate((back - corner_d/2)*yhat) corner();
-            translate((front + corner_d/2)*yhat) corner();
-        }
+    module channel() {
+        translate([-spindle_w/2, front-wall_th/2, bottom+base_th])
+        cube([spindle_w, depth, height]);
     }
     
     module guide() {
-        module funnel() {
-            rotate(90*yhat) hull() {
-                translate(-guide_th/2*yhat) rotate(-90*xhat) cylinder(d=wire_d, h=0.02, center=true);
-                translate(guide_th/2*yhat) capsule(d=max(wire_d, guide_h-2), length=w);
+        points = [ [0, 0, corner_r], [0, guide_h, corner_r] ];
+        translate([0, front, bottom + points[0].z])
+        rotate([90-guide_angle, 0, 0])
+        difference() {
+            rotate([0, 90, 0]) {
+                linear_extrude(width, center=true) hull() {
+                    for (p=points)
+                        translate([p.x, p.y])
+                            circle(r=p.z, $fs=nozzle_d/2);
+                }
             }
-        }
-
-        translate([0, guide_y, guide_z])
-        translate(guide_th/2*yhat) difference() {
-            hull() {
-                translate((guide_h - guide_th)/2*zhat) corner(d=guide_th);
-                translate((-guide_h + guide_th)/2*zhat) corner(d=guide_th);
-            }
-            funnel();
+            
+            // opening for the wire
+            translate([0, base_th + label_h + wire_h/2, 0])
+                cylinder(h=wall_th+0.1, d1=2*wire_d+nozzle_d, d2=wire_d+nozzle_d, center=true, $fs=nozzle_d/2);
+            
+            // recess for the label
+            translate([0, base_th + label_h/2, wall_th-nozzle_d])
+                cube([width, label_h, wall_th], center=true);
         }
     }
     
-    module label() {
-        translate([0, front + corner_d/2, bottom + corner_d/2]) hull() {
-            corner();
-            translate(label_h*zhat) corner();
-        }
+    module key(w=1, h=1, clearance=0) {
+        points = [
+            [0.50, -0.01],
+            [0.50, 0.00],
+            [0.25, 1.00],
+            [-0.25, 1.00],
+            [-0.50, 0.00],
+            [-0.50, -0.01]
+        ];
+        offset(delta=clearance, chamfer=true) scale([w, h]) polygon(points);
     }
-
-    module chassis() {
-        // The envelope defines the outer shape of the bracket.
-        module envelope() {
-            union() {
-                hull() {
-                    hub();
-                    base();
-                    label();
-                    guide();
-                }
-            }
-        }
-        
-        // This defines the y-axis channel that, when cut out of the
-        // envelope, gives us the essential shape of the chassis.
-        module channel() {
-            l = left + wall_th + corner_d/2;
-            r = -l;
-            b = bottom + wall_th + corner_d/2;
-            t = bottom + height;
-            corners = [
-                [r, b],
-                [r, t],
-                [l, t],
-                [l, b]            
-            ];
-            
-            translate((back + 1)*yhat)
-            rotate(90*xhat)
-            hull() {
-                for (corner = corners) {
-                    translate(corner) cylinder(d=corner_d, h=depth+2);
-                }
-            }
-        }
-
-        module spindle_slot() {
-            rotate(90*zhat) linear_extrude(height=od)
-            key_profile(height=key_h, width=key_w, clearance=0.3);
-        }
-        
-        union() {
-            difference() {
-                envelope();
-                channel();
-                
-                // Slots to support the spindle
-                translate((-spindle_d/2 + spindle_crop)*zhat) union() {
-                    translate((left + wall_th)*xhat) spindle_slot();
-                    translate((right - wall_th)*xhat) mirror(xhat) spindle_slot();
-                }
-            }
-            guide();
-            label();
-        }
-    }
-
-    module spindle() {
-        module key() {
-            linear_extrude(height=spindle_d)
-                key_profile(height=key_h, width=key_w, extend=clearance/2);
-        }
-        
+    
+    module spindle(clearance=0) {
         intersection() {
             union() {
-                rotate(90*yhat)
-                cylinder(d=spindle_d, h=w+clearance, center=true);
-                translate(-spindle_d/2 * zhat) union() {
-                    translate((left + wall_th)*xhat) rotate(90*zhat) key();
-                    translate((right - wall_th)*xhat) rotate(-90*zhat) key();
-                }
+                rotate([0, 90, 0])
+                    cylinder(h=spindle_w, d=spindle_d, center=true, $fs=nozzle_d/2, $fa=4);
+                
+                key_w = wall_th;
+                key_h = 2*wall_th/3;
+                translate([spindle_w/2, 0, 0]) rotate([0, -30, -90])
+                    linear_extrude(2*spindle_d, center=true)
+                        key(key_w, key_h, clearance);
+                translate([-spindle_w/2, 0, 0]) rotate([0, 30, 90])
+                    linear_extrude(2*spindle_d, center=true)
+                        key(key_w, key_h, clearance);
             }
             
-            // Intersecting with the hub rounds off the tops of the keys.
-            hub();
+            // intersect with offset box to flatten the bottom
+            translate([0, 0, spindle_crop])
+                cube([width, spindle_d, spindle_d], center=true);
             
-            // Crop the bottom of the spindle for easy printing.
-            translate(spindle_crop*zhat) cube([width, spindle_d, spindle_d], center=true);
+            // intersect with envelope so keys match chassis profile
+            profile_envelope();
         }
     }
-
-    echo("Spool Holder Dimensions", width, depth, height);
-
-    if ($preview) {
-        // In preview mode (F5 in OpenSCAD), we show the parts assembled.
-        translate([0, -front, spindle_zoffset]) union() {
-            chassis();
-            spindle();
-            // The spool is just for visualization.
-            %translate(-play*zhat) rotate(90*yhat) spool(w, od, id);
-            // As is this mock label.
-            color("#FFFFFF") translate([left, front - 0.01, bottom + corner_d/2]) cube([width, 0.01, 25.4/2]);
+    
+    module din_cutout(tab_w=7) {
+        lower = 0;
+        upper = lower + 35 + nozzle_d;
+        
+        points = [
+            [lower, -1],
+            [lower, din_notch_depth],
+            [lower + din_notch_size, din_notch_depth],
+            [lower + din_notch_size, 0, clearance],
+            [upper - din_notch_size - din_notch_depth, 0, clearance],
+            [upper - din_notch_size, din_notch_depth],
+            [upper, din_notch_depth],
+            [upper, din_hook_depth],
+            [upper - din_hook_depth, din_rail_th, clearance],
+            [upper - din_hook_depth, 0, clearance],
+            [upper - din_hook_depth, -1]
+        ];
+        
+        // For the DIN rails themselves:
+        rotate([0, 0, 90]) rotate([90, 0, 0]) {
+            linear_extrude(width+clearance, convexity=10, center=true)
+                polygon(rounded_polygon(points, $fs=nozzle_d/2));
         }
-    } else {
-        // In a full rendering (F6), we turn the chassis face down so that
-        // it can be printed without supports.
-        rotate(90*xhat) translate(-front*yhat) chassis();
-        // And we move the spindle next to the chassis.
-        translate([0, -(spindle_zoffset + spindle_d/2 + 1), spindle_d/2 - spindle_crop]) spindle();
+        
+        // For the snap tabs that grab the "lower" rail.
+        offset = tab_w;
+        translate([-offset, 0, 0])
+        translate([-(tab_w + clearance)/2, -4, -clearance/2])
+            cube([tab_w+clearance, 4+clearance, base_th+clearance]);
+        translate([ offset, 0, 0])
+        translate([-(tab_w + clearance)/2, -4, -clearance/2])
+            cube([tab_w+clearance, 4+clearance, base_th+clearance]);
+    }
+    
+    module din_snap_tabs(w=7) {
+        thick = 5*nozzle_d;
+        thin = 2*nozzle_d;
+        points = rounded_polygon([
+            [-2.5, 0],
+            [0, 0],
+            [2, din_hook_depth, nozzle_d],
+            [0, din_hook_depth],
+            [0, din_notch_depth],
+            [0, guide_y],
+            [-thick, guide_y - thick*cos(guide_angle)],
+            [-thin, din_notch_depth, 10]
+        ], $fs=nozzle_d/2);
+        offset = w;
+        translate([-offset, 0, 0])
+        rotate([0, 0, 90]) rotate([90, 0, 0])
+            linear_extrude(w, center=true, convexity=10)
+                polygon(points);
+        translate([ offset, 0, 0])
+        rotate([0, 0, 90]) rotate([90, 0, 0])
+            linear_extrude(w, center=true, convexity=10)
+                polygon(points);
+    }
+    
+    module chassis() {
+        anchor_h = max(base_th, bolt_head_height("#6-32", "flat"));
+        
+        difference() {
+            union() {
+                difference() {
+                    profile_envelope();
+                    channel();
+                }
+                guide();
+                translate([0, back-1.5*wall_th, bottom+clearance])
+                    boss("#6-32", anchor_h);
+            }
+            
+            // subtracting out the spindle with clearance gives us the
+            // slots for the spindle keys
+            spindle(clearance=nozzle_d/2);
+            
+            // a screw hole near the back
+            translate([0, back-1.5*wall_th, bottom+clearance+anchor_h])
+                bolt_hole("#6-32", 5, head="flat");
+            
+            // notches for mounting on DIN rail
+            if (din_mount) {
+                translate([0, -back, bottom]) din_cutout();
+            }
+        }
+        
+        if (din_mount) translate([0, -back, bottom]) din_snap_tabs();
+    }
+    
+    translate([0, 0, -bottom]) {
+        chassis();
+        if ($preview) {
+            // In preview mode (F5 in OpenSCAD), show the parts assembled.
+            spindle();
+            #translate([0, 0, -play]) rotate([0, 90, 0]) spool(w, od, id);
+        } else {
+            // arrange parts for printing
+            translate([0, back + wall_th + spindle_d/2, bottom + spindle_crop/2]) spindle();
+        }
     }
 }
 
-// A typical small spool of hook-up wire:
-//spool_holder(wire_d=2, w=22, $fs=0.1, $fa=6);
-
-// A larger spool:
-//translate(38*xhat)
-spool_holder(wire_d=3, w=36, od=72, $fs=0.1, $fa=6);
-
-// A spool of specialty wire:
-//translate(74*xhat)
-//spool_holder(wire_d=0.4, w=16, od=70, id=10, $fs=0.1, $fa=6);
+spool_holder(wire_d=Wire_Diameter,
+             w=Spool_Width,
+             od=Spool_Outer_Diameter,
+             id=Spool_Inner_Diameter,
+             wall_th=3,
+             din_mount=DIN_Mount,
+             nozzle_d=Nozzle_Diameter);
