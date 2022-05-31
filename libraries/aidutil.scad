@@ -135,7 +135,8 @@ function push_to_circumference(p, focus, radius) =
 function arc(focus, r, p1, p2, depth=0) =
     depth >= 8 ? [] :  // prevent runaway recursion
     magnitude(p1-p2) <= $fs ? [] :
-        let (midpoint = push_to_circumference(mid(p1, p2), focus, r)) [
+        let (midpoint = push_to_circumference(mid(p1, p2), focus, r))
+        [
             each arc(focus, r, p1, midpoint, depth=depth+1),
             midpoint,
             each arc(focus, r, midpoint, p2, depth=depth+1)
@@ -179,7 +180,9 @@ function compute_arcs(points) =
                 Aprime = B + offset*costheta*Ahat, // endpoints of the arc
                 Cprime = B + offset*costheta*Chat
             )
-            [ F, r, Aprime, Cprime ]
+            // If sintheta is 0, this point is colinear with its neighbors.
+            // We'll skip generating a straight arc for it.
+            if (sintheta != 0) [ F, r, Aprime, Cprime ]
     ];
 
 // Given a list of (x, y, radius) points, this returns a corresponding list of
