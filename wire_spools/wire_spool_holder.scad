@@ -5,7 +5,7 @@
 Wire_Diameter = 2; // [1:0.1:5]
 
 // Width of the spool. (mm)
-Spool_Width = 22; // [12:2:40]
+Spool_Width = 22; // [12:2:70]
 
 // Outer diameter of the spool itself. (mm)
 Spool_Outer_Diameter = 55; // [25:5:100]
