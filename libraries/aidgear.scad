@@ -256,7 +256,6 @@ function AG_rack_tooth_profile(g) =
         tip_y = ref_y + ha,
         hd = AG_dedendum(g),
         root_y = ref_y - hd,
-        foundation_y = root_y - hd,
         alpha = AG_pressure_angle(g) - AG_backlash_angle(g),
         run_at_ref = hd*tan(alpha),
         rise = ha + hd,
@@ -267,7 +266,7 @@ function AG_rack_tooth_profile(g) =
     )
     
     [
-        [0, foundation_y], [0, root_y],
+        [0, root_y],
         each [
             for (i=[1:tooth_count])
                 let (
@@ -282,8 +281,25 @@ function AG_rack_tooth_profile(g) =
                     [rtip, tip_y], [rroot, root_y]
                 ]
         ],
-        [w, root_y], [w, foundation_y]
+        [w, root_y]
     ];
+
+function AG_rack_width(rack) =
+     assert(AG_type(rack) == "AG rack")
+     AG_circular_pitch(rack) * AG_tooth_count(rack);
+
+function AG_rack_profile(rack, height_to_pitch=undef) =
+    assert(AG_type(rack) == "AG rack")
+    let (
+        h = is_undef(height_to_pitch) ? 10*(AG_module(rack) + 0.5) :
+                                        height_to_pitch,
+        foundation = -h,
+        w = AG_rack_width(rack)
+    )
+    [ [0, foundation], each AG_tooth_profile(rack), [w, foundation] ];
+
+function AG_rack_shear(rack, th=1) =
+    th / (AG_circular_pitch(rack) / tan(AG_helical_angle(rack)));
 
 module AG_spur_gear(gear, th=3, convexity=10, center=false) {
     assert(AG_type(gear) == "AG spur");
@@ -298,7 +314,6 @@ module AG_spur_gear(gear, th=3, convexity=10, center=false) {
                 children();
     }
 }
-
 
 module AG_herringbone_gear(gear, th=6, convexity=10, center=false) {
     assert(AG_type(gear) == "AG spur");
@@ -319,32 +334,37 @@ module AG_herringbone_gear(gear, th=6, convexity=10, center=false) {
     }
 }
 
-module AG_rack(rack, th=3, convexity=10, center=false) {
+module AG_rack(rack, th=3, height_to_pitch=undef, convexity=10, center=false) {
     assert(AG_type(rack) == "AG rack");
-    shear = th / (PI * AG_module(rack) / tan(AG_helical_angle(rack)));
+    profile = AG_rack_profile(rack, height_to_pitch);
+    shear = AG_rack_shear(rack, th);
     multmatrix([
         [1, 0, shear, 0],
         [0, 1,     0, 0],
         [0, 0,     1, 0]
     ]) {
         linear_extrude(th, center=center, convexity=convexity)
-            polygon(AG_tooth_profile(rack));
+            polygon(profile);
     }
 }
 
-module AG_herringbone_rack(rack, th=3, convexity=10, center=false) {
+module AG_herringbone_rack(rack, th=3, height_to_pitch=undef, convexity=10, center=false) {
     assert(AG_type(rack) == "AG rack");
-    shear = th/2 / (PI * AG_module(rack) / tan(AG_helical_angle(rack)));
+    profile = AG_rack_profile(rack, height_to_pitch);
+    shear = AG_rack_shear(rack, th/2);
+    drop = center ? th/2 : 0;
+    
+    translate([0, 0, -drop])
     multmatrix([
         [1, 0, shear, 0],
         [0, 1,     0, 0],
         [0, 0,     1, 0]
     ]) {
         linear_extrude(th/2, center=center, convexity=convexity)
-            polygon(AG_tooth_profile(rack));
+            polygon(profile);
     }
 
-    translate([0, 0, th/2])
+    translate([0, 0, th/2-drop])
     multmatrix([
         [1, 0, -shear, 0],
         [0, 1,     0, 0],
@@ -352,7 +372,7 @@ module AG_herringbone_rack(rack, th=3, convexity=10, center=false) {
     ]) {
         translate([shear*th/2, 0, 0])
         linear_extrude(th/2, center=center, convexity=convexity)
-            polygon(AG_tooth_profile(rack));
+            polygon(profile);
     }
 }
 
@@ -437,10 +457,13 @@ translate([0, -35, 0]) {
 }
 
 translate([-23*2*PI/2, 10, 0]) {
+    height_to_pitch = 2*AG_dedendum(rack);
+    color("cyan") translate([0, thickness, 0])
+        AG_herringbone_rack(rack, thickness, height_to_pitch);
+
     // This red rack looks exactly like the cyan one, but it doesn't mesh as
     // smoothly.  Whenever possible, print it in its default orientation, and
     // re-orient it during assembly.
-    color("red") rotate([90, 0, 0]) translate([0, 2*AG_dedendum(rack), 0])
-        AG_herringbone_rack(rack, thickness);
-    color("cyan") translate([0, thickness, 0]) AG_herringbone_rack(rack, thickness);
+    color("red") rotate([90, 0, 0]) translate([0, height_to_pitch, 0])
+        AG_herringbone_rack(rack, thickness, height_to_pitch);
 }
