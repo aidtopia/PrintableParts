@@ -287,12 +287,31 @@ function AG_rack_tooth_profile(g) =
 
 module AG_spur_gear(gear, th=3, convexity=10, center=false) {
     assert(AG_type(gear) == "AG spur");
-    helical_angle = AG_helical_angle(gear);
-    twist = helical_angle / AG_pitch_diameter(gear) * th;
+    twist = -AG_helical_angle(gear) / AG_pitch_diameter(gear) * th;
 
     difference() {
         linear_extrude(th, center=center, convexity=convexity, twist=twist)
             polygon(AG_tooth_profile(gear));
+
+        translate([0, 0, -1])
+            linear_extrude(th+2, convexity=convexity, center=center)
+                children();
+    }
+}
+
+
+module AG_herringbone_gear(gear, th=6, convexity=10, center=false) {
+    assert(AG_type(gear) == "AG spur");
+    twist = -AG_helical_angle(gear) / AG_pitch_diameter(gear) * th/2;
+
+    difference() {
+        union() {
+            linear_extrude(th/2, center=center, convexity=convexity, twist=twist)
+                polygon(AG_tooth_profile(gear));
+            translate([0, 0, th/2]) rotate([0, 0, -twist])
+            linear_extrude(th/2, center=center, convexity=convexity, twist=-twist)
+                polygon(AG_tooth_profile(gear));
+        }
 
         translate([0, 0, -1])
             linear_extrude(th+2, convexity=convexity, center=center)
@@ -313,6 +332,29 @@ module AG_rack(rack, th=3, convexity=10, center=false) {
     }
 }
 
+module AG_herringbone_rack(rack, th=3, convexity=10, center=false) {
+    assert(AG_type(rack) == "AG rack");
+    shear = th/2 / (PI * AG_module(rack) / tan(AG_helical_angle(rack)));
+    multmatrix([
+        [1, 0, shear, 0],
+        [0, 1,     0, 0],
+        [0, 0,     1, 0]
+    ]) {
+        linear_extrude(th/2, center=center, convexity=convexity)
+            polygon(AG_tooth_profile(rack));
+    }
+
+    translate([0, 0, th/2])
+    multmatrix([
+        [1, 0, -shear, 0],
+        [0, 1,     0, 0],
+        [0, 0,     1, 0]
+    ]) {
+        translate([shear*th/2, 0, 0])
+        linear_extrude(th/2, center=center, convexity=convexity)
+            polygon(AG_tooth_profile(rack));
+    }
+}
 
 function radians_from_degrees(degrees) = PI * degrees / 180;
 function degrees_from_radians(radians) = 180 * radians / PI;
@@ -364,10 +406,10 @@ function flipped_points(points) = [
 // TESTING IT OUT
 
 bore_d = 6;
-thickness = 6;
+thickness = 25.4/2;
 pinion = AG_define_gear(tooth_count=11, helical_angle=-30, name="pinion");
 G1 = AG_define_gear(tooth_count=23, iso_module=2, helical_angle=30, name="G1");
-rack = AG_define_rack(23, iso_module=2, helical_angle=-30, name="G2");
+rack = AG_define_rack(23, iso_module=2, helical_angle=-30, name="rack");
 
 if ($preview) {
     AG_echo(pinion);
@@ -376,10 +418,14 @@ if ($preview) {
 }
 
 translate([0, -35, 0]) {
-    color("white") AG_spur_gear(pinion, thickness) { circle(d=bore_d, $fs=0.2); }
+    color("white") AG_herringbone_gear(pinion, thickness) {
+        circle(d=bore_d, $fs=0.2);
+    }
 
     translate([AG_center_distance(pinion, G1) + 4, 0, 0])
-    color("yellow") AG_spur_gear(G1, thickness) { circle(d=bore_d, $fs=0.2); }
+    color("yellow") AG_herringbone_gear(G1, thickness) {
+        circle(d=bore_d, $fs=0.2);
+    }
 
     color("green") translate([-40, 0, 0]) {
         linear_extrude(2) circle(r=25.4);
@@ -390,4 +436,11 @@ translate([0, -35, 0]) {
     }
 }
 
-color("orange") translate([-23*2*PI/2, 0, 0]) AG_rack(rack, thickness);
+translate([-23*2*PI/2, 10, 0]) {
+    // This red rack looks exactly like the cyan one, but it doesn't mesh as
+    // smoothly.  Whenever possible, print it in its default orientation, and
+    // re-orient it during assembly.
+    color("red") rotate([90, 0, 0]) translate([0, 2*AG_dedendum(rack), 0])
+        AG_herringbone_rack(rack, thickness);
+    color("cyan") translate([0, thickness, 0]) AG_herringbone_rack(rack, thickness);
+}
