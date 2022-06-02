@@ -11,8 +11,9 @@
 
 // OpenSCAD doesn't have user-defined types, but we're going to use a
 // vector as an aggregate data type to hold the parameters that define
-// the tooth pattern of a gear.  These accessor functions shows the mapping
-// from index to field.
+// the tooth pattern of a gear.  These accessor functions shows the
+// mapping from index to field.  Always use the accessor functions for
+// compatibility with future versions. 
 
 function AG_type(g)             = assert(len(g) > 0) g[0];
 function AG_name(g)             = assert(len(g) > 1) g[1];
@@ -21,6 +22,7 @@ function AG_module(g)           = assert(len(g) > 3) g[3];
 function AG_pressure_angle(g)   = assert(len(g) > 4) g[4];
 function AG_backlash_angle(g)   = assert(len(g) > 5) g[5];
 function AG_clearance(g)        = assert(len(g) > 6) g[6];
+function AG_helical_angle(g)    = (len(g) > 7) ? g[7] : 0;
 
 // Higher indexes are reserved for future use
 //
@@ -33,11 +35,13 @@ function AG_define_gear(
     pressure_angle=28,
     backlash_angle=0,
     clearance=0.25,  // ISO value
+    helical_angle=0,
     name="spur gear"
 ) =
     AG_define_universal("AG spur", name, tooth_count,
                         iso_module, circular_pitch, diametral_pitch,
-                        pressure_angle, backlash_angle, clearance);
+                        pressure_angle, backlash_angle, clearance,
+                        helical_angle);
 
 function AG_define_rack(
     tooth_count=15,
@@ -45,11 +49,13 @@ function AG_define_rack(
     pressure_angle=28,
     backlash_angle=0,
     clearance=0.25,  // ISO value
+    helical_angle=0,
     name="rack"
 ) =
     AG_define_universal("AG rack", name, tooth_count,
                         iso_module, circular_pitch, diametral_pitch,
-                        pressure_angle, backlash_angle, clearance);
+                        pressure_angle, backlash_angle, clearance,
+                        helical_angle);
 
 function AG_define_universal(
     type,
@@ -58,7 +64,8 @@ function AG_define_universal(
     iso_module, circular_pitch, diametral_pitch,
     pressure_angle,
     backlash_angle,
-    clearance
+    clearance,
+    helical_angle
 ) =
     let (iso_module =
             AG_as_module(iso_module, circular_pitch, diametral_pitch, 2))
@@ -75,6 +82,8 @@ function AG_define_universal(
            "AG: backlash angle should be small and positive")
     assert(clearance >= 0,
            "AG: clearance cannot be negative")
+    assert(-90 < helical_angle && helical_angle < 90,
+           "AG: absolute value of the helical angle shold be less than 90°")
 
 //    let (minimum_teeth = floor(2 / pow(sin(pressure_angle), 2)))
 //    assert(tooth_count >= minimum_teeth,
@@ -84,7 +93,8 @@ function AG_define_universal(
 
     [
         type, name, tooth_count, iso_module,
-        pressure_angle, backlash_angle, clearance
+        pressure_angle, backlash_angle, clearance,
+        helical_angle
     ];
 
 // Internally, we use ISO module.  This function converts various ways of
@@ -116,7 +126,8 @@ module AG_echo(g) {
              "pressure angle:\t", AG_pressure_angle(g), " degrees\n",
              "backlash angle:\t", AG_backlash_angle(g), " degrees\n",
              "clearance:\t", AG_clearance(g), "\n",
-             "pitch radius:\t", AG_pitch_diameter(g)/2, " mm\n"));
+             "pitch radius:\t", AG_pitch_diameter(g)/2, " mm\n",
+             "helical angle:\t", AG_helical_angle(g), " degrees\n"));
 }
 
 function AG_circular_pitch(g)   = PI * AG_module(g);
@@ -140,7 +151,8 @@ function AG_dedendum(g)         = (1.00 + AG_clearance(g)) * AG_module(g);
 // Returns true if the two gears can mesh.
 function AG_compatible(g1, g2) =
     AG_module(g1) == AG_module(g2) &&
-    AG_pressure_angle(g1) == AG_pressure_angle(g2);
+    AG_pressure_angle(g1) == AG_pressure_angle(g2) &&
+    AG_helical_angle(g1) == -AG_helical_angle(g2);
 
 // The center distance is the spacing required between the centers of two
 // gears to have them mesh properly.
@@ -149,6 +161,7 @@ function AG_center_distance(g1, g2) =
            "AG: cannot compute the center distance for incompatible gears")
     (AG_pitch_diameter(g1) + AG_pitch_diameter(g2)) / 2;
 
+function AG_mesh_distance(g1, g2) = AG_center_distance(g1, g2);
 
 // Returns a list of points forming a 2D-polygon of the gear teeth.
 function AG_tooth_profile(g) =
@@ -272,6 +285,35 @@ function AG_rack_tooth_profile(g) =
         [w, root_y], [w, foundation_y]
     ];
 
+module AG_spur_gear(gear, th=3, convexity=10, center=false) {
+    assert(AG_type(gear) == "AG spur");
+    helical_angle = AG_helical_angle(gear);
+    twist = helical_angle / AG_pitch_diameter(gear) * th;
+
+    difference() {
+        linear_extrude(th, center=center, convexity=convexity, twist=twist)
+            polygon(AG_tooth_profile(gear));
+
+        translate([0, 0, -1])
+            linear_extrude(th+2, convexity=convexity, center=center)
+                children();
+    }
+}
+
+module AG_rack(rack, th=3, convexity=10, center=false) {
+    assert(AG_type(rack) == "AG rack");
+    shear = th / (PI * AG_module(rack) / tan(AG_helical_angle(rack)));
+    multmatrix([
+        [1, 0, shear, 0],
+        [0, 1,     0, 0],
+        [0, 0,     1, 0]
+    ]) {
+        linear_extrude(th, center=center, convexity=convexity)
+            polygon(AG_tooth_profile(rack));
+    }
+}
+
+
 function radians_from_degrees(degrees) = PI * degrees / 180;
 function degrees_from_radians(radians) = 180 * radians / PI;
 
@@ -321,37 +363,31 @@ function flipped_points(points) = [
 
 // TESTING IT OUT
 
-bore_d = 3.175;
-pinion = AG_define_gear(tooth_count=11, name="pinion");
-G1 = AG_define_gear(tooth_count=23, iso_module=2, name="G1");
-G2 = AG_define_rack(23, iso_module=2, name="G2");
+bore_d = 6;
+thickness = 6;
+pinion = AG_define_gear(tooth_count=11, helical_angle=-30, name="pinion");
+G1 = AG_define_gear(tooth_count=23, iso_module=2, helical_angle=30, name="G1");
+rack = AG_define_rack(23, iso_module=2, helical_angle=-30, name="G2");
 
 if ($preview) {
     AG_echo(pinion);
     AG_echo(G1);
-    AG_echo(G2);
+    AG_echo(rack);
 }
 
 translate([0, -35, 0]) {
-    color("white") linear_extrude(3, convexity=10) difference() {
-        polygon(AG_tooth_profile(pinion));
-        circle(d=bore_d, $fs=0.2);
-    }
+    color("white") AG_spur_gear(pinion, thickness) { circle(d=bore_d, $fs=0.2); }
 
-    translate([AG_center_distance(pinion, G1) + 1, 0, 0])
-    color("yellow") linear_extrude(3, convexity=10) difference() {
-        polygon(AG_tooth_profile(G1));
-        circle(d=bore_d, $fs=0.2);
-    }
+    translate([AG_center_distance(pinion, G1) + 4, 0, 0])
+    color("yellow") AG_spur_gear(G1, thickness) { circle(d=bore_d, $fs=0.2); }
 
     color("green") translate([-40, 0, 0]) {
         linear_extrude(2) circle(r=25.4);
-        linear_extrude(7) {
-            translate([-34/2, 0, 0]) circle(d=bore_d, $fs=0.2);
-            translate([ 34/2, 0, 0]) circle(d=bore_d, $fs=0.2);
+        linear_extrude(4+thickness) {
+            translate([-34/2, 0, 0]) circle(d=bore_d - 0.4, $fs=0.2);
+            translate([ 34/2, 0, 0]) circle(d=bore_d - 0.4, $fs=0.2);
         }
     }
 }
 
-color("orange") translate([-23*2*PI/2, 0, 0])
-    linear_extrude(3, convexity=10) polygon(AG_tooth_profile(G2));
+color("orange") translate([-23*2*PI/2, 0, 0]) AG_rack(rack, thickness);
