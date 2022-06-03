@@ -5,6 +5,7 @@
 // involute tooth shapes:
 // * https://ciechanow.ski/gears/
 // * https://khkgears.net/new/gear_knowledge/gear_technical_reference/
+// * https://drivetrainhub.com/notebooks/gears/geometry/Chapter%203%20-%20Helical%20Gears.html
 // and a few pages on Wikipedia (of course).
 
 // GEAR DEFINITIONS
@@ -22,7 +23,7 @@ function AG_module(g)           = assert(len(g) > 3) g[3];
 function AG_pressure_angle(g)   = assert(len(g) > 4) g[4];
 function AG_backlash_angle(g)   = assert(len(g) > 5) g[5];
 function AG_clearance(g)        = assert(len(g) > 6) g[6];
-function AG_helical_angle(g)    = (len(g) > 7) ? g[7] : 0;
+function AG_helix_angle(g)      = (len(g) > 7) ? g[7] : 0;
 
 // Higher indexes are reserved for future use
 //
@@ -35,13 +36,13 @@ function AG_define_gear(
     pressure_angle=28,
     backlash_angle=0,
     clearance=0.25,  // ISO value
-    helical_angle=0,
+    helix_angle=0,
     name="spur gear"
 ) =
     AG_define_universal("AG spur", name, tooth_count,
                         iso_module, circular_pitch, diametral_pitch,
                         pressure_angle, backlash_angle, clearance,
-                        helical_angle);
+                        helix_angle);
 
 function AG_define_rack(
     tooth_count=15,
@@ -49,13 +50,13 @@ function AG_define_rack(
     pressure_angle=28,
     backlash_angle=0,
     clearance=0.25,  // ISO value
-    helical_angle=0,
+    helix_angle=0,
     name="rack"
 ) =
     AG_define_universal("AG rack", name, tooth_count,
                         iso_module, circular_pitch, diametral_pitch,
                         pressure_angle, backlash_angle, clearance,
-                        helical_angle);
+                        helix_angle);
 
 function AG_define_universal(
     type,
@@ -65,7 +66,7 @@ function AG_define_universal(
     pressure_angle,
     backlash_angle,
     clearance,
-    helical_angle
+    helix_angle
 ) =
     let (iso_module =
             AG_as_module(iso_module, circular_pitch, diametral_pitch, 2))
@@ -82,7 +83,7 @@ function AG_define_universal(
            "AG: backlash angle should be small and positive")
     assert(clearance >= 0,
            "AG: clearance cannot be negative")
-    assert(-90 < helical_angle && helical_angle < 90,
+    assert(-90 < helix_angle && helix_angle < 90,
            "AG: absolute value of the helical angle shold be less than 90°")
 
 //    let (minimum_teeth = floor(2 / pow(sin(pressure_angle), 2)))
@@ -94,7 +95,7 @@ function AG_define_universal(
     [
         type, name, tooth_count, iso_module,
         pressure_angle, backlash_angle, clearance,
-        helical_angle
+        helix_angle
     ];
 
 // Internally, we use ISO module.  This function converts various ways of
@@ -127,7 +128,7 @@ module AG_echo(g) {
              "backlash angle:\t", AG_backlash_angle(g), " degrees\n",
              "clearance:\t", AG_clearance(g), "\n",
              "pitch radius:\t", AG_pitch_diameter(g)/2, " mm\n",
-             "helical angle:\t", AG_helical_angle(g), " degrees\n"));
+             "helical angle:\t", AG_helix_angle(g), " degrees\n"));
 }
 
 function AG_circular_pitch(g)   = PI * AG_module(g);
@@ -152,7 +153,7 @@ function AG_dedendum(g)         = (1.00 + AG_clearance(g)) * AG_module(g);
 function AG_compatible(g1, g2) =
     AG_module(g1) == AG_module(g2) &&
     AG_pressure_angle(g1) == AG_pressure_angle(g2) &&
-    AG_helical_angle(g1) == -AG_helical_angle(g2);
+    AG_helix_angle(g1) == -AG_helix_angle(g2);
 
 // The center distance is the spacing required between the centers of two
 // gears to have them mesh properly.
@@ -161,7 +162,7 @@ function AG_center_distance(g1, g2) =
            "AG: cannot compute the center distance for incompatible gears")
     (AG_pitch_diameter(g1) + AG_pitch_diameter(g2)) / 2;
 
-function AG_mesh_distance(g1, g2) = AG_center_distance(g1, g2);
+
 
 // Returns a list of points forming a 2D-polygon of the gear teeth.
 function AG_tooth_profile(g) =
@@ -299,11 +300,14 @@ function AG_rack_profile(rack, height_to_pitch=undef) =
     [ [0, foundation], each AG_tooth_profile(rack), [w, foundation] ];
 
 function AG_rack_shear(rack, th=1) =
-    th / (AG_circular_pitch(rack) / tan(AG_helical_angle(rack)));
+    tan(AG_helix_angle(rack));
+
+
 
 module AG_spur_gear(gear, th=3, convexity=10, center=false) {
     assert(AG_type(gear) == "AG spur");
-    twist = -AG_helical_angle(gear) / AG_pitch_diameter(gear) * th;
+    circumference = PI * AG_pitch_diameter(gear);
+    twist = th*360*tan(AG_helix_angle(gear))/circumference;
 
     difference() {
         linear_extrude(th, center=center, convexity=convexity, twist=twist)
@@ -317,7 +321,8 @@ module AG_spur_gear(gear, th=3, convexity=10, center=false) {
 
 module AG_herringbone_gear(gear, th=6, convexity=10, center=false) {
     assert(AG_type(gear) == "AG spur");
-    twist = -AG_helical_angle(gear) / AG_pitch_diameter(gear) * th/2;
+    circumference = PI * AG_pitch_diameter(gear);
+    twist = th*360*tan(AG_helix_angle(gear))/circumference;
 
     difference() {
         union() {
@@ -425,11 +430,13 @@ function flipped_points(points) = [
 
 // TESTING IT OUT
 
+helix_angle = 30;
+pinion = AG_define_gear(tooth_count=11, helix_angle=-helix_angle, name="pinion");
+G1 = AG_define_gear(tooth_count=23, iso_module=2, helix_angle=helix_angle, name="G1");
+rack = AG_define_rack(2*AG_tooth_count(pinion), iso_module=2, helix_angle=helix_angle, name="rack");
+
 bore_d = 6;
-thickness = 25.4/2;
-pinion = AG_define_gear(tooth_count=11, helical_angle=-30, name="pinion");
-G1 = AG_define_gear(tooth_count=23, iso_module=2, helical_angle=30, name="G1");
-rack = AG_define_rack(23, iso_module=2, helical_angle=-30, name="rack");
+thickness = 6;//PI*AG_pitch_diameter(pinion);
 
 if ($preview) {
     AG_echo(pinion);
@@ -438,12 +445,12 @@ if ($preview) {
 }
 
 translate([0, -35, 0]) {
-    color("white") AG_herringbone_gear(pinion, thickness) {
+    color("white") AG_spur_gear(pinion, thickness) {
         circle(d=bore_d, $fs=0.2);
     }
 
     translate([AG_center_distance(pinion, G1) + 4, 0, 0])
-    color("yellow") AG_herringbone_gear(G1, thickness) {
+    color("yellow") AG_spur_gear(G1, thickness) {
         circle(d=bore_d, $fs=0.2);
     }
 
@@ -456,14 +463,19 @@ translate([0, -35, 0]) {
     }
 }
 
-translate([-23*2*PI/2, 10, 0]) {
+translate([-AG_tooth_count(rack)*2*PI/2, 0, 0]) {
     height_to_pitch = 2*AG_dedendum(rack);
-    color("cyan") translate([0, thickness, 0])
-        AG_herringbone_rack(rack, thickness, height_to_pitch);
+    color("cyan")
+        AG_rack(rack, thickness, height_to_pitch);
+    echo(AG_center_distance(pinion, rack));
 
-    // This red rack looks exactly like the cyan one, but it doesn't mesh as
-    // smoothly.  Whenever possible, print it in its default orientation, and
-    // re-orient it during assembly.
-    color("red") rotate([90, 0, 0]) translate([0, height_to_pitch, 0])
-        AG_herringbone_rack(rack, thickness, height_to_pitch);
+    if ($preview) {
+        factor=2;
+        distance = $t * factor*AG_circular_pitch(pinion)*AG_tooth_count(pinion);
+        turn = $t * factor*-360;
+        
+        translate([distance, AG_center_distance(pinion, rack), 0])
+        color("orange") rotate([0, 0, turn-90])
+            AG_spur_gear(pinion, thickness) { circle(r=1, $fs=0.2); }
+    }
 }
