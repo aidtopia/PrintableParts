@@ -39,7 +39,7 @@ function AG_define_gear(
     helix_angle=0,
     name="spur gear"
 ) =
-    AG_define_universal("AG spur", name, tooth_count,
+    AG_define_universal("AG gear", name, tooth_count,
                         iso_module, circular_pitch, diametral_pitch,
                         pressure_angle, backlash_angle, clearance,
                         helix_angle);
@@ -137,7 +137,7 @@ function AG_diametral_pitch(g)  = 25.4 / AG_module(g);
 
 function AG_pitch_diameter(g)   =
     let (type = AG_type(g))
-    type == "AG spur" ? AG_module(g) * AG_tooth_count(g) :
+    type == "AG gear" ? AG_module(g) * AG_tooth_count(g) :
     type == "AG rack" ? 0 :
     undef;
 
@@ -167,7 +167,7 @@ function AG_center_distance(g1, g2) =
 // Returns a list of points forming a 2D-polygon of the gear teeth.
 function AG_tooth_profile(g) =
     let (type = AG_type(g))
-    type == "AG spur" ? AG_spur_tooth_profile(g) :
+    type == "AG gear" ? AG_spur_tooth_profile(g) :
     type == "AG rack" ? AG_rack_tooth_profile(g) :
     assert(false, str("AG: '", type, "' is not a recognized gear type"))
     [];
@@ -305,7 +305,7 @@ function AG_rack_shear(rack, th=1) =
 
 
 module AG_gear(gear, th=3, convexity=10, center=false, herringbone=false) {
-    assert(AG_type(gear) == "AG spur");
+    assert(AG_type(gear) == "AG gear");
     assert(herringbone == false || AG_helix_angle(gear) != 0,
            "AG: cannot create \"herringbone\" gear when helix angle is 0");
     w = herringbone ? th/2 : th;
