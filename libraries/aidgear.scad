@@ -30,6 +30,7 @@ function AG_helix_angle(g)      = (len(g) > 7) ? g[7] : 0;
 // Instead of creating these vectors by hand, there are AG_define_...
 // functions to define the desired gear.
 
+// For most exterior cylindrical gears, like spur gears and helical gears.
 function AG_define_gear(
     tooth_count=15,
     iso_module=undef, circular_pitch=undef, diametral_pitch=undef,
@@ -44,6 +45,22 @@ function AG_define_gear(
                         pressure_angle, backlash_angle, clearance,
                         helix_angle);
 
+// For interior gears.
+function AG_define_ring_gear(
+    tooth_count=15,
+    iso_module=undef, circular_pitch=undef, diametral_pitch=undef,
+    pressure_angle=28,
+    backlash_angle=0,
+    clearance=0.25,  // ISO value
+    helix_angle=0,
+    name="ring gear"
+) =
+    AG_define_universal("AG ring", name, tooth_count,
+                        iso_module, circular_pitch, diametral_pitch,
+                        pressure_angle, backlash_angle, clearance,
+                        helix_angle);
+
+// For linear gear rack.
 function AG_define_rack(
     tooth_count=15,
     iso_module=undef, circular_pitch=undef, diametral_pitch=undef,
@@ -58,6 +75,7 @@ function AG_define_rack(
                         pressure_angle, backlash_angle, clearance,
                         helix_angle);
 
+// For internal use.
 function AG_define_universal(
     type,
     name,
@@ -127,8 +145,8 @@ module AG_echo(g) {
              "pressure angle:\t", AG_pressure_angle(g), " degrees\n",
              "backlash angle:\t", AG_backlash_angle(g), " degrees\n",
              "clearance:\t", AG_clearance(g), "\n",
-             "pitch radius:\t", AG_pitch_diameter(g)/2, " mm\n",
-             "helix angle:\t", AG_helix_angle(g), " degrees\n"));
+             "helix angle:\t", AG_helix_angle(g), " degrees\n",
+             "pitch diameter:\t", AG_pitch_diameter(g), " mm\n"));
 }
 
 function AG_circular_pitch(g)   = PI * AG_module(g);
@@ -136,12 +154,10 @@ function AG_circular_pitch(g)   = PI * AG_module(g);
 function AG_diametral_pitch(g)  = 25.4 / AG_module(g);
 
 function AG_pitch_diameter(g)   =
-    let (type = AG_type(g))
-    type == "AG gear" ? AG_module(g) * AG_tooth_count(g) :
-    type == "AG rack" ? 0 :
-    undef;
+    (AG_type(g) == "AG rack") ? 0 : AG_module(g) * AG_tooth_count(g);
 
-function AG_outer_diameter(g)   = AG_pitch_diameter(g) + 2*AG_addendum(g);
+
+function AG_tip_diameter(g)     = AG_pitch_diameter(g) + 2*AG_addendum(g);
 
 function AG_root_diameter(g)    = AG_pitch_diameter(g) - 2*AG_dedendum(g);
 
@@ -160,19 +176,23 @@ function AG_compatible(g1, g2) =
 function AG_center_distance(g1, g2) =
     assert(AG_compatible(g1, g2),
            "AG: cannot compute the center distance for incompatible gears")
-    (AG_pitch_diameter(g1) + AG_pitch_diameter(g2)) / 2;
-
-
+    let (
+        d1 = (AG_type(g1) == "AG ring" ? -1 : 1) * AG_pitch_diameter(g1),
+        d2 = (AG_type(g2) == "AG ring" ? -1 : 1) * AG_pitch_diameter(g2)
+    )
+    abs(d1 + d2) / 2;
 
 // Returns a list of points forming a 2D-polygon of the gear teeth.
 function AG_tooth_profile(g) =
     let (type = AG_type(g))
     type == "AG gear" ? AG_spur_tooth_profile(g) :
     type == "AG rack" ? AG_rack_tooth_profile(g) :
+    type == "AG ring" ? AG_ring_tooth_profile(g) :
     assert(false, str("AG: '", type, "' is not a recognized gear type"))
     [];
 
 function AG_spur_tooth_profile(g) =
+    assert(AG_type(g) == "AG gear")
     let (
         // The pitch circle, sometimes called the reference circle, is
         // the size of the equivalent toothless disc if we were using
@@ -249,6 +269,57 @@ function AG_spur_tooth_profile(g) =
             each tooth_path
     ];
 
+function AG_ring_tooth_profile(g) =
+    assert(AG_type(g) == "AG ring")
+    let (
+        pitch_r = AG_pitch_diameter(g)/2,
+
+        // The signs in these two formulas are a key difference between
+        // interior gears exterior ones.
+        addendum_r = pitch_r - AG_addendum(g),
+        root_r = pitch_r + AG_dedendum(g),
+        
+        base_r = pitch_r * cos(AG_pressure_angle(g))
+    )
+    echo(str("pitch_r=", pitch_r, "; addendum_r=", addendum_r, "; root_r=", root_r, "; base_r=", base_r))
+    let (
+        tooth_count = AG_tooth_count(g),
+        nominal_tooth_angle = (360/tooth_count - AG_backlash_angle(g)) / 2,
+
+        rolling_angle_at_pitch =
+            intersect_involute_circle(base_r, pitch_r),
+        pitch_hit = involute_point(base_r, rolling_angle_at_pitch),
+        tooth_angle_correction = 2*atan2(pitch_hit.y, pitch_hit.x),
+        tooth_angle = nominal_tooth_angle + tooth_angle_correction,
+
+        // For internal gears, the involute goes from the tip out to the root
+        start_r = max(addendum_r, base_r),
+        rolling0 = intersect_involute_circle(base_r, start_r),
+        rolling1 = intersect_involute_circle(base_r, root_r),
+
+        inv_path = involute_points(base_r, rolling0, rolling1),
+        
+        path =
+            (root_r < start_r) ?
+                [[root_r, 0], each inv_path] : inv_path,
+
+        flipped = flipped_points(path)
+    )
+    
+    assert(root_r > 0)
+
+    [ for (i = [1:tooth_count])
+        let (
+            theta = i * 360/tooth_count,
+            theta1 = theta - tooth_angle/2,
+            theta2 = theta1 + tooth_angle,
+            tooth_path =
+                [each rotated_points(path,    theta1),
+                 each rotated_points(flipped, theta2)]
+        )
+            each tooth_path
+    ];
+
 function AG_rack_tooth_profile(g) =
     let (
         CP = AG_circular_pitch(g),
@@ -292,6 +363,8 @@ function AG_rack_width(rack) =
 function AG_rack_profile(rack, height_to_pitch=undef) =
     assert(AG_type(rack) == "AG rack")
     let (
+        // I browsed some catalogs to come up with this formula for
+        // the default for `height_to_pitch`.
         h = is_undef(height_to_pitch) ? 10*(AG_module(rack) + 0.5) :
                                         height_to_pitch,
         foundation = -h,
@@ -400,8 +473,8 @@ function involute_points(base_r=1, rolling_angle0=0, rolling_angle1=360) =
 // of `base_r` intersects a concentric circle of radius `r`.  This
 // can be derived by plugging the involute equations for x and y
 // into sqrt(x^2 + y^2) == r and solving for the rolling angle.
-// Remember that this returns the rolling angle.  It does not indicate
-// where it intersects the circle.
+// Remember that this returns the rolling angle.  the rolling angle does
+// does _not_ indicate where the involute intersects the circle.
 function intersect_involute_circle(base_r, r) =
     let (d = r/base_r, rolling_angle = sqrt(d*d - 1))
         degrees_from_radians(rolling_angle);
@@ -417,9 +490,7 @@ function rotated_points(points, angle) = [
 
 function flipped_point(pt) = [ pt.x, -pt.y ];
 function flipped_points(points) = [
-    for (i = [len(points):-1:1])
-        let (pt = points[i-1])
-            flipped_point(pt)
+    for (i = [len(points):-1:1]) flipped_point(points[i-1])
 ];
 
 // TESTING IT OUT
@@ -428,6 +499,8 @@ helix_angle = 20;
 pinion = AG_define_gear(tooth_count=11, helix_angle=-helix_angle, name="pinion");
 G1 = AG_define_gear(tooth_count=23, iso_module=2, helix_angle=helix_angle, name="G1");
 rack = AG_define_rack(2*AG_tooth_count(pinion), iso_module=2, helix_angle=helix_angle, name="rack");
+ring = AG_define_ring_gear(24, pressure_angle=20, iso_module=3);
+internal = AG_define_gear(16, pressure_angle=20, iso_module=3);
 
 bore_d = 6;
 thickness = 8;
@@ -436,6 +509,7 @@ if ($preview) {
     AG_echo(pinion);
     AG_echo(G1);
     AG_echo(rack);
+    AG_echo(ring);
 }
 
 translate([0, -35, 0]) {
@@ -456,6 +530,16 @@ translate([0, -35, 0]) {
         }
     }
 }
+
+translate([120, 0, 0]) {
+    color("red") difference() {
+        circle(r=50, $fs=0.2);
+        polygon(AG_ring_tooth_profile(ring));
+    }
+    color("blue") translate([AG_center_distance(internal, ring), 0, 0])
+        AG_gear(internal);
+}
+
 
 translate([-AG_tooth_count(rack)*2*PI/2, 0, 0]) {
     height_to_pitch = 2*AG_dedendum(rack);
