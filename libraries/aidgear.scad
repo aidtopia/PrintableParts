@@ -143,7 +143,7 @@ function AG_pitch_diameter(g)   =
 
 function AG_outer_diameter(g)   = AG_pitch_diameter(g) + 2*AG_addendum(g);
 
-function AG_inner_diameter(g)   = AG_pitch_diameter(g) - 2*AG_dedendum(g);
+function AG_root_diameter(g)    = AG_pitch_diameter(g) - 2*AG_dedendum(g);
 
 function AG_addendum(g)         = 1.00 * AG_module(g);
 
@@ -325,6 +325,17 @@ module AG_gear(gear, th=3, convexity=10, center=false, herringbone=false) {
                     polygon(profile);
             }
         }
+
+        // Mark tooth one
+        translate([AG_root_diameter(gear)/2, 0, 0])
+            linear_extrude(min(1, w), center=true, convexity=10)
+                square(AG_module(gear), center=true, $fs=0.2);
+
+        rot = herringbone ? 0 : -twist;
+        rotate([0, 0, rot])
+            translate([AG_root_diameter(gear)/2, 0, th-drop])
+                linear_extrude(min(1, w), center=true, convexity=10)
+                    square(AG_module(gear), center=true, $fs=0.2);
 
         translate([0, 0, -1])
             linear_extrude(th+2, convexity=convexity, center=center)
