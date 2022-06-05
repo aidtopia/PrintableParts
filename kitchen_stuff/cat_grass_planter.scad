@@ -56,22 +56,22 @@ module cat_grass_planter(wall_th=3, perf_d=1.5, nozzle_d=0.4) {
         "WEDNESDAY",
         "THURSDAY",
         "FRIDAY",
-        "CATURDAY!"
+        "CATURDAY!",
+        ""
     ];
 
     sides = len(days);
 
-    soil_volume = 325000;  // expanded volume (mm^3) of one soil puck
-    soil_depth = 40;
+    soil_volume = 380000;  // expanded volume (mm^3) of one soil puck
+    soil_depth = 44;
 
     soil_area = soil_volume / soil_depth;
     soil_d = sqrt(8 * soil_area / (sides * sin(360 / sides)));
     echo(str("soil box \"diameter\" = ", soil_d));
     water_d = soil_d + 2*wall_th + 2;
     h = soil_depth;
-    riser_h = h/2;
-    tube_id = 6;
-    tube_h = h + 2*wall_th;
+    riser_h = 3*h/4;
+    tube_id = 12;
 
     function volume(diameter, number_of_sides, height) =
         let (n = number_of_sides, r = diameter/2)
@@ -82,7 +82,6 @@ module cat_grass_planter(wall_th=3, perf_d=1.5, nozzle_d=0.4) {
             diameter/2 * sin(interior_angle/2);
 
     module footprint(d) { circle(d=d, $fn=sides); }
-    module riser(h) { cylinder(h=h, r=3, $fs=nozzle_d/2); }
     
     module water_box(id, h, riser_h) {
         od = id + 2*wall_th;
@@ -96,11 +95,10 @@ module cat_grass_planter(wall_th=3, perf_d=1.5, nozzle_d=0.4) {
                 }
                 
                 // short interior walls to support soil box
-                linear_extrude(riser_h, convexity=10) difference() {
+                linear_extrude(riser_h+wall_th, convexity=10) difference() {
                     footprint(od);
-                    footprint(id-(2*wall_th + 1));
+                    footprint(id-(3*wall_th + 1));
                 }
-                
 
                 // bottom
                 linear_extrude(wall_th) footprint(od);
@@ -120,40 +118,44 @@ module cat_grass_planter(wall_th=3, perf_d=1.5, nozzle_d=0.4) {
             }
         }
 
-        translate([0, 0, wall_th]) {
-            // risers
-            for (i = [1:sides])
-                rotate([0, 0, (i+0.5)*dtheta])
-                    translate([id/4, 0, 0]) riser(riser_h);
-        }
+        // risers
+        translate(wall_th*zhat)
+            for (i = [1:2:sides])
+                rotate([0, 0, i*dtheta])
+                    translate([id/2 - id/4, 0, 0])
+                        cube([id/4, wall_th, riser_h]);
     }
     
     module soil_box(id, h) {
         od = id + 2*wall_th;
         tube_od = tube_id + wall_th;
+        tube_h = h + 10;
         difference() {
             union() {
-                linear_extrude(h + wall_th) {
+                linear_extrude(h + wall_th, convexity=10) {
+                    // walls
                     difference() {
                         footprint(od);
                         footprint(id);
                     }
-                    
-                    // Fill tube.
-                    translate((id-tube_od)/2*xhat)
-                        circle(d=tube_od, $fs=nozzle_d/2);
                 }
+                
+                // fill tube
+                translate((id-tube_id)/2*xhat) {
+                    linear_extrude(tube_h, convexity=10) {
+                            circle(d=tube_od, $fs=nozzle_d/2);
+                    }
 
-                // Funnel.
-                translate((h+wall_th)*zhat)
-                    translate((id-tube_od)/2*xhat)
-                        linear_extrude(tube_od, convexity=10, scale=2)
+                    // funnel
+                    translate(tube_h*zhat)
+                        linear_extrude(tube_od, convexity=10, scale=2.8)
                             difference() {
                                 circle(d=tube_od, $fs=nozzle_d/2);
                                 circle(d=tube_id, $fs=nozzle_d/2);
                             }
+                }
 
-
+                // bottom
                 linear_extrude(wall_th) difference() {
                     footprint(id);
                     
@@ -162,23 +164,24 @@ module cat_grass_planter(wall_th=3, perf_d=1.5, nozzle_d=0.4) {
                     for (y = [-id/2:5:id/2]) {
                         for (x = [-id/2:5:id/2]) {
                             if (norm([x, y]) < r) {
-                                translate([x, y, 0]) circle(d=perf_d, $fn=8);
+                                translate([x, y, 0]) square(perf_d);
                             }
                         }
                     }
                     
                     // These larger holes are for wicking material
                     // to draw the water from below the air gap
-                    // into the soil.
+                    // into the soil.  A rolled up bit of paper towel
+                    // works well.
                     for (theta = [60:90:360])
                         rotate(theta*zhat) translate(od/3*xhat)
-                            circle(d=6, $fs=0.2);                    
+                            circle(d=8, $fs=0.2);                    
                 }
             }
 
             // The fill tube passes the water down past the soil to
-            // the reservoir.
-            translate((id-tube_od)/2*xhat)
+            // the reservoir.  Here's where we bore it through.
+            translate((id-tube_id)/2*xhat)
                 translate(-zhat) linear_extrude(tube_h+2, convexity=10)
                     circle(d=tube_id, $fs=nozzle_d/2);
         }
@@ -187,12 +190,14 @@ module cat_grass_planter(wall_th=3, perf_d=1.5, nozzle_d=0.4) {
     if ($preview) {
         cross_section(plane="none") explode(2*h, zhat) {
             water_box(water_d, h, riser_h);
-            translate((wall_th + riser_h)*zhat)
+            translate((riser_h + wall_th)*zhat)
                 color("orange") soil_box(soil_d, h);
         }
     } else {
-        translate(-0.51*water_d*xhat) water_box(water_d, h, riser_h);
-        translate(0.51*soil_d*xhat) soil_box(soil_d, h);
+        translate(-0.5*water_d*xhat) rotate([0, 0, 180/sides])
+            water_box(water_d, h, riser_h);
+        translate(0.5*soil_d*xhat) rotate([0, 0, 180/sides + 180])
+            soil_box(soil_d, h+6);
     }
     echo(str("soil volume = ", volume(soil_d, sides, h)));
 }
