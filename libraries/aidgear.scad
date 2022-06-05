@@ -156,6 +156,7 @@ function AG_diametral_pitch(g)  = 25.4 / AG_module(g);
 function AG_pitch_diameter(g)   =
     (AG_type(g) == "AG rack") ? 0 : AG_module(g) * AG_tooth_count(g);
 
+function AG_base_diameter(g)    = AG_pitch_diameter(g) * cos(AG_pressure_angle(g));
 
 function AG_tip_diameter(g)     = AG_pitch_diameter(g) + 2*AG_addendum(g);
 
@@ -167,9 +168,15 @@ function AG_dedendum(g)         = (1.00 + AG_clearance(g)) * AG_module(g);
 
 // Returns true if the two gears can mesh.
 function AG_compatible(g1, g2) =
+    let (
+        t1 = AG_type(g1), t2 = AG_type(g2),
+        beta1 = AG_helix_angle(g1), beta2 = AG_helix_angle(g2),
+        helix1 = t1 == "AG ring" ? -beta1 : beta1,
+        helix2 = t2 == "AG ring" ? -beta2 : beta2
+    )
     AG_module(g1) == AG_module(g2) &&
     AG_pressure_angle(g1) == AG_pressure_angle(g2) &&
-    AG_helix_angle(g1) == -AG_helix_angle(g2);
+    helix1 == -helix2;
 
 // The center distance is the spacing required between the centers of two
 // gears to have them mesh properly.
@@ -181,6 +188,8 @@ function AG_center_distance(g1, g2) =
         d2 = (AG_type(g2) == "AG ring" ? -1 : 1) * AG_pitch_diameter(g2)
     )
     abs(d1 + d2) / 2;
+
+function AG_internal_gear(g) = AG_type(g) == "AG ring";
 
 // Returns a list of points forming a 2D-polygon of the gear teeth.
 function AG_tooth_profile(g) =
@@ -335,8 +344,9 @@ function AG_helix_twist(g, th=1) =
     let (circumference = PI * AG_pitch_diameter(g))
         th * 360 * AG_helix_shear(g) / circumference;
 
+// Creates geometry for cylindrical spur, helical, and ring gears.
 module AG_gear(gear, th=3, convexity=10, center=false, herringbone=false) {
-    assert(AG_type(gear) == "AG gear");
+    assert(AG_type(gear) == "AG gear" || AG_type(gear) == "AG ring");
     assert(herringbone == false || AG_helix_angle(gear) != 0,
            "AG: cannot create \"herringbone\" gear when helix angle is 0");
     w = herringbone ? th/2 : th;
@@ -348,7 +358,12 @@ module AG_gear(gear, th=3, convexity=10, center=false, herringbone=false) {
     difference() {
         union() {
             linear_extrude(w, convexity=convexity, twist=twist)
-                polygon(profile);
+                difference() {
+                    if (AG_type(gear) == "AG ring") {
+                        circle(d=100, $fs=0.2);
+                    }
+                    polygon(profile);
+                }
             if (herringbone) {
                 translate([0, 0, w]) rotate([0, 0, -twist])
                 linear_extrude(w, convexity=convexity, twist=-twist)
@@ -357,12 +372,12 @@ module AG_gear(gear, th=3, convexity=10, center=false, herringbone=false) {
         }
 
         // Mark tooth one
-        translate([AG_root_diameter(gear)/2, 0, 0])
+        #translate([AG_root_diameter(gear)/2, 0, 0])
             linear_extrude(min(1, w), center=true, convexity=10)
                 square(AG_module(gear), center=true, $fs=0.2);
 
         rot = herringbone ? 0 : -twist;
-        rotate([0, 0, rot])
+        #rotate([0, 0, rot])
             translate([AG_root_diameter(gear)/2, 0, th-drop])
                 linear_extrude(min(1, w), center=true, convexity=10)
                     square(AG_module(gear), center=true, $fs=0.2);
@@ -408,6 +423,11 @@ module AG_rack(rack, th=3, height_to_pitch=undef, convexity=10, center=false, he
 function radians_from_degrees(degrees) = PI * degrees / 180;
 function degrees_from_radians(radians) = 180 * radians / PI;
 
+function gcd(x, y) =
+  let(a = max(x, y), b = min(x, y))
+    b == 0 ? a : gcd(b, a%b);
+
+function lcm(x, y) = x*y / gcd(x, y);
 
 // INVOLUTE OF A CIRCLE
 function involute_point(base_r=1, rolling_angle=0) =
@@ -456,8 +476,8 @@ helix_angle = 20;
 pinion = AG_define_gear(tooth_count=11, helix_angle=-helix_angle, name="pinion");
 G1 = AG_define_gear(tooth_count=23, iso_module=2, helix_angle=helix_angle, name="G1");
 rack = AG_define_rack(2*AG_tooth_count(pinion), iso_module=2, helix_angle=helix_angle, name="rack");
-ring = AG_define_ring_gear(24, pressure_angle=20, iso_module=3);
-inner = AG_define_gear(16, pressure_angle=20, iso_module=3);
+ring = AG_define_ring_gear(24, pressure_angle=20, iso_module=3, helix_angle=helix_angle);
+inner = AG_define_gear(16, pressure_angle=20, iso_module=3, helix_angle=helix_angle);
 
 bore_d = 6;
 thickness = 8;
@@ -488,14 +508,23 @@ translate([0, -35, 0]) {
     }
 }
 
-translate([120, 0, 0]) {
-    color("red") difference() {
-        circle(r=50, $fs=0.2);
-        polygon(AG_tooth_profile(ring));
-    }
+translate([125, 0, 0]) {
+    color("gold") AG_gear(ring, thickness);
+    
+    if ($preview) {
+        // For the animation to loop properly, we need to figure out how
+        // many trips around the ring gear the inner gear must make until
+        // it returns to its original rotation.
+        z1 = AG_tooth_count(ring);
+        z2 = AG_tooth_count(inner);
+        laps = lcm(z1, z2) / z1;
 
-    color("blue") translate([AG_center_distance(ring, inner), 0, 0])
-        polygon(AG_tooth_profile(inner));
+        rotate([0, 0, $t*360*laps])
+        color("blue") translate([AG_center_distance(ring, inner), 0, 0])
+            rotate([0, 0, -$t*360*laps*z1/z2]) AG_gear(inner, thickness);
+    } else {
+        AG_gear(inner, thickness);
+    }
 }
 
 
