@@ -383,15 +383,15 @@ module AG_gear(gear, th=3, convexity=10, center=false, herringbone=false) {
         nudge = ring ? m : 0;
         x = AG_root_diameter(gear)/2 + nudge;
         translate([x, 0, 0])
-            linear_extrude(min(1, w), center=true, convexity=10)
+            linear_extrude(min(1, w), center=true, convexity=convexity)
                 square(m, center=true);
         rotate([0, 0, herringbone ? 0 : -twist])
-            translate([x, 0, th-drop])
-                linear_extrude(min(1, w), center=true, convexity=10)
+            translate([x, 0, th])
+                linear_extrude(min(1, w), center=true, convexity=convexity)
                     square(m, center=true);
 
         translate([0, 0, -1])
-            linear_extrude(th+2, convexity=convexity, center=center)
+            linear_extrude(th+2, convexity=convexity)
                 children();
     }
 }
@@ -431,9 +431,8 @@ module AG_rack(rack, th=3, height_to_pitch=undef, convexity=10, center=false, he
 function radians_from_degrees(degrees) = PI * degrees / 180;
 function degrees_from_radians(radians) = 180 * radians / PI;
 
-function gcd(x, y) =
-  let(a = max(x, y), b = min(x, y))
-    b == 0 ? a : gcd(b, a%b);
+function gcd(a, b) =
+  b > a ? gcd(b, a) : b == 0 ? a : gcd(b, a%b);
 
 function lcm(x, y) = x*y / gcd(x, y);
 
@@ -469,14 +468,12 @@ function rotated_point(pt, angle) =
     let (s=sin(angle), c=cos(angle))
         [ pt.x*c - pt.y*s, pt.x*s + pt.y*c ];
 
-function rotated_points(points, angle) = [
-    for (pt = points) rotated_point(pt, angle)
-];
+function rotated_points(points, angle) =
+    [ for (pt = points) rotated_point(pt, angle) ];
 
 function flipped_point(pt) = [ pt.x, -pt.y ];
-function flipped_points(points) = [
-    for (i = [len(points):-1:1]) flipped_point(points[i-1])
-];
+function flipped_points(points) =
+    [ for (i = [len(points):-1:1]) flipped_point(points[i-1]) ];
 
 // TESTING IT OUT
 
@@ -503,7 +500,7 @@ translate([0, -35, 0]) {
     }
 
     translate([AG_center_distance(pinion, G1) + 4, 0, 0])
-    color("yellow") AG_gear(G1, thickness) {
+    color("yellow") AG_gear(G1, thickness, center=true) {
         circle(d=bore_d, $fs=0.2);
     }
 
