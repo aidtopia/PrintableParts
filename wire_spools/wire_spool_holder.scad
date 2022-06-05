@@ -11,7 +11,7 @@ Spool_Width = 22; // [12:2:70]
 Spool_Outer_Diameter = 55; // [25:5:100]
 
 // Inner diameter of the spool. (mm)
-Spool_Inner_Diameter = 25.5; // [12.5:0.5:50]
+Spool_Inner_Diameter = 25.5; // [7.5:0.5:50]
 
 // Make the spool holder mountable to 35mm DIN rail.
 DIN_Mount = true;
@@ -253,6 +253,7 @@ module spool_holder(wire_d=3, w=22, od=55, id=25.5, wall_th=3, din_mount=false, 
     
     module chassis() {
         anchor_h = max(base_th, bolt_head_height("#6-32", "flat"));
+        tab_w = min(7, width/5);
         
         difference() {
             union() {
@@ -275,11 +276,11 @@ module spool_holder(wire_d=3, w=22, od=55, id=25.5, wall_th=3, din_mount=false, 
             
             // notches for mounting on DIN rail
             if (din_mount) {
-                translate([0, -back, bottom]) din_cutout();
+                translate([0, -back, bottom]) din_cutout(tab_w);
             }
         }
         
-        if (din_mount) translate([0, -back, bottom]) din_snap_tabs();
+        if (din_mount) translate([0, -back, bottom]) din_snap_tabs(tab_w);
     }
     
     translate([0, 0, -bottom]) {
