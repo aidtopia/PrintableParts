@@ -345,8 +345,18 @@ function AG_helix_twist(g, th=1) =
     let (circumference = PI * AG_pitch_diameter(g))
         th * 360 * AG_helix_shear(g) / circumference;
 
-// Creates geometry for cylindrical spur, helical, and ring (internal) gears.
 module AG_gear(gear, th=3, convexity=10, center=false, herringbone=false) {
+    if (AG_type(gear) == "AG rack") {
+        AG_rack(gear, th=th, convexity=convexity, center=center,
+                herringbone=herringbone);
+    } else {
+        AG_cylindrical_gear(gear, th=th, convexity=convexity, center=center,
+                            herringbone=herringbone) { children(); }
+    }
+}
+
+// Creates geometry for cylindrical spur, helical, and ring (internal) gears.
+module AG_cylindrical_gear(gear, th=3, convexity=10, center=false, herringbone=false) {
     assert(AG_type(gear) != "AG rack",
            str("AG: to create geometry for the rack \"", AG_name(gear),
                "\", use `AG_rack` instead of `AG_gear`."));
@@ -428,6 +438,51 @@ module AG_rack(rack, th=3, height_to_pitch=undef, convexity=10, center=false, he
     }
 }
 
+// Instantiates two gears and animates them as though the pinion
+// is driving the gear.
+module AG_animate(pinion, gear, th=3, herringbone=false,
+                  colors=["gold", "cornflowerblue"]) {
+    assert(AG_type(pinion) != "AG rack",
+           "AG: the pinion in an animation must be a cylindrical gear");
+
+    pinion_teeth = AG_tooth_count(pinion);
+    gear_teeth   = AG_tooth_count(gear);
+    tooth_ratio  = pinion_teeth / gear_teeth;
+    laps = min(3, lcm(pinion_teeth, gear_teeth) / pinion_teeth);
+
+    cd = AG_center_distance(pinion, gear);
+    is_rack = AG_type(gear) == "AG rack";
+    is_ring = AG_type(gear) == "AG ring";
+    mesh_vec =
+        is_rack ? [0, -cd, 0] :
+        is_ring ? [-cd, 0, 0] :
+                  [cd, 0, 0];
+    mesh_rot =
+        is_rack ? -90 :
+        is_ring ? gear_teeth % 2 == 1 ? 180/pinion_teeth : 0 :
+                  gear_teeth % 2 == 0 ? 180/pinion_teeth : 0;
+
+    pinion_rot = $t <= 0.5 ? -360*laps*2*$t : -360*laps*(1 - 2*($t-0.5));
+    gear_rot =
+        is_rack ? 0 :
+        is_ring ? pinion_rot * tooth_ratio :
+                 -pinion_rot * tooth_ratio;
+    gear_vec =
+        is_rack ? [pinion_rot/360 * PI * AG_pitch_diameter(pinion), 0, 0] :
+                  [0, 0, 0];
+                      
+    color(colors[0]) rotate([0, 0, mesh_rot]) rotate([0, 0, pinion_rot])
+        AG_gear(pinion, th=th, herringbone=herringbone) {
+            circle(d=6, $fs=0.2);
+        }
+    color(colors[1]) translate(mesh_vec) translate(gear_vec)
+        rotate([0, 0, gear_rot])
+            AG_gear(gear, th=th, herringbone=herringbone) {
+                circle(d=6, $fs=0.2);
+            }
+}
+
+
 function radians_from_degrees(degrees) = PI * degrees / 180;
 function degrees_from_radians(radians) = 180 * radians / PI;
 
@@ -475,77 +530,4 @@ function flipped_point(pt) = [ pt.x, -pt.y ];
 function flipped_points(points) =
     [ for (i = [len(points):-1:1]) flipped_point(points[i-1]) ];
 
-// TESTING IT OUT
-
-helix_angle = 20;
-pinion = AG_define_gear(tooth_count=11, helix_angle=-helix_angle, name="pinion");
-G1 = AG_define_gear(tooth_count=23, iso_module=2, helix_angle=helix_angle, name="G1");
-rack = AG_define_rack(2*AG_tooth_count(pinion), iso_module=2, helix_angle=helix_angle, name="rack");
-ring = AG_define_ring_gear(24, pressure_angle=20, iso_module=3, helix_angle=helix_angle);
-inner = AG_define_gear(16, pressure_angle=20, iso_module=3, helix_angle=helix_angle);
-
-bore_d = 6;
-thickness = 8;
-
-if ($preview) {
-    AG_echo(pinion);
-    AG_echo(G1);
-    AG_echo(rack);
-    AG_echo(ring);
-}
-
-translate([0, -35, 0]) {
-    color("white") AG_gear(pinion, thickness) {
-        circle(d=bore_d, $fs=0.2);
-    }
-
-    translate([AG_center_distance(pinion, G1) + 4, 0, 0])
-    color("yellow") AG_gear(G1, thickness, center=true) {
-        circle(d=bore_d, $fs=0.2);
-    }
-
-    color("green") translate([-40, 0, 0]) {
-        linear_extrude(2) circle(r=25.4);
-        linear_extrude(4+thickness) {
-            translate([-34/2, 0, 0]) circle(d=bore_d - 0.4, $fs=0.2);
-            translate([ 34/2, 0, 0]) circle(d=bore_d - 0.4, $fs=0.2);
-        }
-    }
-}
-
-translate([-AG_tooth_count(rack)*2*PI/2, 0, 0]) {
-    height_to_pitch = 2*AG_dedendum(rack);
-    color("cyan") AG_rack(rack, thickness, height_to_pitch);
-
-    if ($preview) {
-        factor=2;
-        distance = $t * factor*AG_circular_pitch(pinion)*AG_tooth_count(pinion);
-        turn = $t * factor*-360;
-        
-        translate([distance, AG_center_distance(pinion, rack), 0])
-        color("orange") rotate([0, 0, turn-90])
-            AG_gear(pinion, thickness) { circle(r=1, $fs=0.2); }
-    }
-}
-
-translate([125, 0, 0]) {
-    color("gold") AG_gear(ring, thickness, herringbone=false);
-    
-    if ($preview) {
-        // For the animation to loop properly, we need to figure out how
-        // many trips around the ring gear the inner gear must make until
-        // it returns to its original rotation.
-        z1 = AG_tooth_count(ring);
-        z2 = AG_tooth_count(inner);
-        laps = lcm(z1, z2) / z1;
-
-        rotate([0, 0, $t*360*laps])
-        color("blue") translate([AG_center_distance(ring, inner), 0, 0])
-            rotate([0, 0, -$t*360*laps*z1/z2])
-                AG_gear(inner, thickness, herringbone=false) {
-                    circle(d=bore_d, $fs=0.2);
-                }
-    } else {
-        AG_gear(inner, thickness, herringbone=true);
-    }
-}
+echo("\n***\nLoad aidgear_demo.scad to see what aidgear.scad can do.\n***\n");
