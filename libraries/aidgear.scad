@@ -26,12 +26,18 @@ function AG_module(g)           = assert(len(g) > 3) g[3];
 function AG_pressure_angle(g)   = assert(len(g) > 4) g[4];
 function AG_backlash_angle(g)   = assert(len(g) > 5) g[5];
 function AG_clearance(g)        = assert(len(g) > 6) g[6];
-function AG_helix_angle(g)      = (len(g) > 7) ? g[7] : 0;
+function AG_thickness(g)        = assert(len(g) > 7) g[7];
+function AG_helix_angle(g)      = (len(g) > 8) ? g[8] : 0;
+function AG_herringbone(g)      = (len(g) > 9) ? g[9] : false;
 
 // Higher indexes are reserved for future use
 //
 // Instead of creating these vectors by hand, there are AG_define_...
 // functions to define the desired gear.
+
+// TODO:  Should definitions accept the definition of another gear to
+// use as defaults?  This would make it simpler to define compatible
+// gears.
 
 // For most exterior cylindrical gears, like spur gears and helical gears.
 function AG_define_gear(
@@ -40,13 +46,15 @@ function AG_define_gear(
     pressure_angle=28,
     backlash_angle=0,
     clearance=0.25,  // ISO value
+    thickness=1,
     helix_angle=0,
+    herringbone=false,
     name="spur gear"
 ) =
     AG_define_universal("AG gear", name, tooth_count,
                         iso_module, circular_pitch, diametral_pitch,
                         pressure_angle, backlash_angle, clearance,
-                        helix_angle);
+                        thickness, helix_angle, herringbone);
 
 // For interior gears.
 function AG_define_ring_gear(
@@ -55,13 +63,15 @@ function AG_define_ring_gear(
     pressure_angle=28,
     backlash_angle=0,
     clearance=0.25,  // ISO value
+    thickness=1,
     helix_angle=0,
+    herringbone=false,
     name="ring gear"
 ) =
     AG_define_universal("AG ring", name, tooth_count,
                         iso_module, circular_pitch, diametral_pitch,
                         pressure_angle, backlash_angle, clearance,
-                        helix_angle);
+                        thickness, helix_angle, herringbone);
 
 // For linear gear rack.
 function AG_define_rack(
@@ -70,13 +80,15 @@ function AG_define_rack(
     pressure_angle=28,
     backlash_angle=0,
     clearance=0.25,  // ISO value
+    thickness=1,
     helix_angle=0,
+    herringbone=false,
     name="rack"
 ) =
     AG_define_universal("AG rack", name, tooth_count,
                         iso_module, circular_pitch, diametral_pitch,
                         pressure_angle, backlash_angle, clearance,
-                        helix_angle);
+                        thickness, helix_angle, herringbone);
 
 // For internal use.
 function AG_define_universal(
@@ -87,7 +99,9 @@ function AG_define_universal(
     pressure_angle,
     backlash_angle,
     clearance,
-    helix_angle
+    thickness,
+    helix_angle,
+    herringbone
 ) =
     let (iso_module =
             AG_as_module(iso_module, circular_pitch, diametral_pitch, 2))
@@ -104,8 +118,11 @@ function AG_define_universal(
            "AG: backlash angle should be small and positive")
     assert(clearance >= 0,
            "AG: clearance cannot be negative")
+    assert(thickness >= 0, "AG: thickness cannot be negative")
     assert(-90 < helix_angle && helix_angle < 90,
            "AG: absolute value of the helix angle shold be less than 90°")
+    assert(!herringbone || helix_angle != 0,
+           "AG: herringbone gears require a non-zero helix angle")
 
 //    let (minimum_teeth = floor(2 / pow(sin(pressure_angle), 2)))
 //    assert(tooth_count >= minimum_teeth,
@@ -116,7 +133,7 @@ function AG_define_universal(
     [
         type, name, tooth_count, iso_module,
         pressure_angle, backlash_angle, clearance,
-        helix_angle
+        thickness, helix_angle, herringbone
     ];
 
 // Internally, we use ISO module.  This function converts various ways of
@@ -125,7 +142,7 @@ function AG_as_module(
     iso_module=undef,
     circular_pitch=undef,
     diametral_pitch=undef,
-    default=2
+    default=undef
 ) =
     !is_undef(iso_module) ? iso_module :
     !is_undef(circular_pitch) ? circular_pitch / PI :
@@ -140,7 +157,7 @@ module AG_echo(g) {
            "AG: not a gear definition")
     echo(str("\n--- ", AG_name(g), " (" , AG_type(g), ") ---\n",
              "tooth count:\t", AG_tooth_count(g), "\n",
-             "gear size:\n",
+             "tooth size:\n",
              "  module:\t", AG_module(g), " mm\n",
              "  circular pitch:\t", AG_circular_pitch(g),
                 " mm tooth-to-tooth\n",
@@ -148,7 +165,9 @@ module AG_echo(g) {
              "pressure angle:\t", AG_pressure_angle(g), " degrees\n",
              "backlash angle:\t", AG_backlash_angle(g), " degrees\n",
              "clearance:\t", AG_clearance(g), "\n",
-             "helix angle:\t", AG_helix_angle(g), " degrees\n",
+             "thickness:\t", AG_thickness(g), " mm\n",
+             "helix angle:\t", AG_helix_angle(g), " degrees",
+                 AG_herringbone(g) ? " (herringbone)\n" : "\n",
              "pitch diameter:\t", AG_pitch_diameter(g), " mm\n"));
 }
 
@@ -195,8 +214,6 @@ function AG_center_distance(g1, g2) =
         d2 = (AG_type(g2) == "AG ring" ? -1 : 1) * AG_pitch_diameter(g2)
     )
     abs(d1 + d2) / 2;
-
-function AG_internal_gear(g) = AG_type(g) == "AG ring";
 
 // Returns a list of points forming a 2D-polygon of the gear teeth.
 function AG_tooth_profile(g) =
@@ -348,25 +365,24 @@ function AG_helix_twist(g, th=1) =
     let (circumference = PI * AG_pitch_diameter(g))
         th * 360 * AG_helix_shear(g) / circumference;
 
-module AG_gear(gear, th=3, convexity=10, center=false, herringbone=false) {
+module AG_gear(gear, convexity=10, center=false) {
     if (AG_type(gear) == "AG rack") {
-        AG_rack(gear, th=th, convexity=convexity, center=center,
-                herringbone=herringbone);
+        AG_rack(gear, convexity=convexity, center=center);
     } else {
-        AG_cylindrical_gear(gear, th=th, convexity=convexity,
-                            center=center, herringbone=herringbone) {
+        AG_cylindrical_gear(gear, convexity=convexity,
+                            center=center) {
             children();
         }
     }
 }
 
 // Creates geometry for cylindrical spur, helical, and ring (internal) gears.
-module AG_cylindrical_gear(gear, th=3, convexity=10, center=false, herringbone=false) {
+module AG_cylindrical_gear(gear, convexity=10, center=false) {
     assert(AG_type(gear) != "AG rack",
            str("AG: to create geometry for the rack \"", AG_name(gear),
                "\", use `AG_rack` instead of `AG_gear`."));
-    assert(herringbone == false || AG_helix_angle(gear) != 0,
-           "AG: cannot create \"herringbone\" gear when helix angle is 0");
+    th = AG_thickness(gear);
+    herringbone = AG_herringbone(gear);
     w = herringbone ? th/2 : th;
     twist = AG_helix_twist(gear, w);
     profile = AG_tooth_profile(gear);
@@ -411,10 +427,10 @@ module AG_cylindrical_gear(gear, th=3, convexity=10, center=false, herringbone=f
     }
 }
 
-module AG_rack(rack, th=3, height_to_pitch=undef, convexity=10, center=false, herringbone=false) {
+module AG_rack(rack, height_to_pitch=undef, convexity=10, center=false) {
     assert(AG_type(rack) == "AG rack");
-    assert(herringbone == false || AG_helix_angle(rack) != 0,
-           "AG: cannot create \"herringbone\" rack when helix angle is 0");
+    th = AG_thickness(rack);
+    herringbone = AG_herringbone(rack);
     w = herringbone ? th/2 : th;
     shear = AG_helix_shear(rack);
     profile = AG_rack_profile(rack, height_to_pitch);
@@ -445,8 +461,7 @@ module AG_rack(rack, th=3, height_to_pitch=undef, convexity=10, center=false, he
 
 // Instantiates two gears and animates them as though the pinion
 // is driving the gear.
-module AG_animate(pinion, gear, th=3, herringbone=false,
-                  colors=["gold", "cornflowerblue"]) {
+module AG_animate(pinion, gear, colors=["gold", "cornflowerblue"]) {
     assert(AG_type(pinion) != "AG rack",
            "AG: the pinion in an animation must be a cylindrical gear");
 
@@ -477,14 +492,10 @@ module AG_animate(pinion, gear, th=3, herringbone=false,
                   [0, 0, 0];
                       
     color(colors[0]) rotate([0, 0, mesh_rot]) rotate([0, 0, pinion_rot])
-        AG_gear(pinion, th=th, herringbone=herringbone) {
-            children();
-        }
+        AG_gear(pinion) { children(); }
     color(colors[1]) translate(mesh_vec) translate(gear_vec)
         rotate([0, 0, gear_rot])
-            AG_gear(gear, th=th, herringbone=herringbone) {
-                children();
-            }
+            AG_gear(gear) { children(); }
 }
 
 

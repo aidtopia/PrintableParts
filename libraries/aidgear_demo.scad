@@ -20,26 +20,39 @@ use <aidgear.scad>
 module demo(helix_angle=0, herringbone=false, th=8, bore_d=6) {
 
     module animate(pinion, gear) {
-        AG_animate(pinion, gear, th=th, herringbone=herringbone) {
-            circle(d=bore_d, $fs=0.2);
-        }
+        AG_animate(pinion, gear) circle(d=bore_d, $fs=0.2);
     }
 
     pinion =
-        AG_define_gear(tooth_count=11, helix_angle=helix_angle,
+        AG_define_gear(tooth_count=11, iso_module=2,
+                       thickness=th,
+                       helix_angle=helix_angle,
+                       herringbone=herringbone,
                        name="pinion");
     G1 =
         AG_define_gear(tooth_count=22, iso_module=2,
-                       helix_angle=-helix_angle, name="G1");
+                       thickness=th,
+                       helix_angle=-helix_angle,
+                       herringbone=herringbone,
+                       name="G1");
     rack =
         AG_define_rack(2*AG_tooth_count(pinion), iso_module=2,
-                       helix_angle=-helix_angle, name="rack");
+                       thickness=th,
+                       helix_angle=-helix_angle,
+                       herringbone=herringbone,
+                       name="rack");
     ring =
-        AG_define_ring_gear(24, pressure_angle=20, iso_module=3,
-                            helix_angle=helix_angle);
+        AG_define_ring_gear(24, iso_module=3, pressure_angle=20,
+                            thickness=th,
+                            helix_angle=helix_angle,
+                            herringbone=herringbone,
+                            name="internal gear");
     inner =
-        AG_define_gear(16, pressure_angle=20, iso_module=3,
-                       helix_angle=helix_angle);
+        AG_define_gear(16, iso_module=3, pressure_angle=20,
+                       thickness=th,
+                       helix_angle=helix_angle,
+                       herringbone=herringbone,
+                       name="inner gear");
 
     translate([0, 100, 0]) animate(pinion, rack);
     translate([-80, 0, 0]) animate(pinion, G1);
@@ -54,5 +67,5 @@ module demo(helix_angle=0, herringbone=false, th=8, bore_d=6) {
     }
 }
 
-demo(helix_angle=Helix_Angle, herringbone=Herringbone,
-     bore_d=Bore_Diameter, th=Thickness);
+demo(helix_angle=Helix_Angle, herringbone=Herringbone, th=Thickness,
+     bore_d=Bore_Diameter);
