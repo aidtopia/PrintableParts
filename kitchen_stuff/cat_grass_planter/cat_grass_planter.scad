@@ -66,12 +66,21 @@ module cat_grass_planter(wall_th=3, perf_d=1.5, nozzle_d=0.4) {
     soil_depth = 44;
 
     soil_area = soil_volume / soil_depth;
-    soil_d = sqrt(8 * soil_area / (sides * sin(360 / sides)));
-    echo(str("soil box \"diameter\" = ", soil_d));
-    water_d = soil_d + 2*wall_th + 2;
-    h = soil_depth;
-    riser_h = 3*h/4;
+    soil_id = sqrt(8 * soil_area / (sides * sin(360 / sides)));
+    soil_od = soil_id + 2*wall_th;
+    soil_h = soil_depth + 5;
+
+    water_id = soil_od + nozzle_d;
+    water_od = water_id + 2*wall_th;
+    water_h = soil_depth;
+    riser_h = 0.75*water_h;
+
     tube_id = 12;
+    tube_od = tube_id + wall_th;
+    tube_h = soil_h + 12;
+    
+    lid_od = soil_od;
+    lid_id = lid_od - 2*wall_th - nozzle_d;
 
     function volume(diameter, number_of_sides, height) =
         let (n = number_of_sides, r = diameter/2)
@@ -83,13 +92,15 @@ module cat_grass_planter(wall_th=3, perf_d=1.5, nozzle_d=0.4) {
 
     module footprint(d) { circle(d=d, $fn=sides); }
     
-    module water_box(id, h, riser_h) {
-        od = id + 2*wall_th;
+    module water_box() {
+        id = water_id;
+        od = water_od;
+
         dtheta = 360/sides;
         difference() {
             union() {
                 // outer walls
-                linear_extrude(h + wall_th, convexity=10) difference() {
+                linear_extrude(water_h+wall_th, convexity=10) difference() {
                     footprint(od);
                     footprint(id);
                 }
@@ -110,7 +121,7 @@ module cat_grass_planter(wall_th=3, perf_d=1.5, nozzle_d=0.4) {
             r = effective_r(od);
             for (i = [0:sides - 1]) {
                 rotate([0, 0, (i+0.5)*dtheta])
-                    translate([r, 0, h/2])
+                    translate([r, 0, water_h/2])
                         rotate(90*zhat) rotate(45*yhat) rotate(90*xhat)
                             linear_extrude(wall_th, center=true, convexity=10)
                                 text(days[i], size=text_size,
@@ -122,17 +133,16 @@ module cat_grass_planter(wall_th=3, perf_d=1.5, nozzle_d=0.4) {
         translate(wall_th*zhat)
             for (i = [1:2:sides])
                 rotate([0, 0, i*dtheta])
-                    translate([id/2 - id/4, 0, 0])
+                    translate([id/2 - id/4, -wall_th/2, 0])
                         cube([id/4, wall_th, riser_h]);
     }
     
-    module soil_box(id, h) {
-        od = id + 2*wall_th;
-        tube_od = tube_id + wall_th;
-        tube_h = h + 10;
+    module soil_box() {
+        id = soil_id;
+        od = soil_od;
         difference() {
             union() {
-                linear_extrude(h + wall_th, convexity=10) {
+                linear_extrude(soil_h + wall_th, convexity=10) {
                     // walls
                     difference() {
                         footprint(od);
@@ -164,7 +174,8 @@ module cat_grass_planter(wall_th=3, perf_d=1.5, nozzle_d=0.4) {
                     for (y = [-id/2:5:id/2]) {
                         for (x = [-id/2:5:id/2]) {
                             if (norm([x, y]) < r) {
-                                translate([x, y, 0]) square(perf_d);
+                                translate([x, y, 0])
+                                    square(perf_d, center=true);
                             }
                         }
                     }
@@ -187,19 +198,64 @@ module cat_grass_planter(wall_th=3, perf_d=1.5, nozzle_d=0.4) {
         }
     }
     
+    module lid() {
+        perf_d = 4.2;
+        tube_notch = tube_od + 2*nozzle_d;
+        difference() {
+            union() {
+                linear_extrude(wall_th, convexity=10)
+                    footprint(lid_od);
+                translate(-wall_th*zhat)
+                    linear_extrude(wall_th, convexity=10) difference() {
+                        footprint(lid_id);
+                        footprint(lid_id - 2*wall_th);
+                    }
+            }
+            
+            translate([(lid_id - tube_id)/2, 0, -wall_th-1])
+                linear_extrude(2*wall_th+2, convexity=10) {
+                    circle(d=tube_notch);
+                    translate(-tube_notch/2*yhat)
+                        square(tube_notch);
+                }
+
+            translate([0, 0, -wall_th-1])
+            linear_extrude(2*wall_th+2, convexity=10) {
+                r = effective_r(lid_id) - perf_d;
+                for (y = [-lid_id/2:5:lid_id/2]) {
+                    for (x = [-lid_id/2:5:lid_id/2-tube_od]) {
+                        if (norm([x, y]) < r) {
+                            translate([x, y, 0]) square(perf_d, center=true);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Add back a connector that was lost to the tube notch.
+        translate([(lid_id - tube_id - tube_notch)/2 - (5-perf_d), -5/2, 0])
+            cube([5 - perf_d, 5, wall_th]);
+    }
+    
     if ($preview) {
-        cross_section(plane="none") explode(2*h, zhat) {
-            water_box(water_d, h, riser_h);
-            translate((riser_h + wall_th)*zhat)
-                color("orange") soil_box(soil_d, h);
+        cross_section(plane="xz") explode(2*riser_h, zhat) {
+            water_box();
+            translate((riser_h + wall_th)*zhat) explode(0.6*soil_h, zhat) {
+                color("orange") soil_box();
+                translate((soil_h + wall_th)*zhat) color("green")
+                    lid();
+            }
         }
     } else {
-        translate(-0.5*water_d*xhat) rotate([0, 0, 180/sides])
-            water_box(water_d, h, riser_h);
-        translate(0.5*soil_d*xhat) rotate([0, 0, 180/sides + 180])
-            soil_box(soil_d, h+6);
+        translate(-0.5*water_od*xhat) rotate([0, 0, 180/sides])
+            water_box();
+        translate(0.5*soil_od*xhat) rotate([0, 0, 180/sides + 180])
+            soil_box();
+        translate([0, -0.41*(lid_od+max(water_od, soil_od)), wall_th])
+            rotate([180, 0, 180/sides])
+                lid();
     }
-    echo(str("soil volume = ", volume(soil_d, sides, h)));
+    echo(str("soil volume = ", volume(soil_id, sides, soil_depth)));
 }
 
 cat_grass_planter(wall_th=2);
