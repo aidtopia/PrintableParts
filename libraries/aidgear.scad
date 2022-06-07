@@ -8,6 +8,9 @@
 // * https://drivetrainhub.com/notebooks/gears/geometry/Chapter%203%20-%20Helical%20Gears.html
 // and a few pages on Wikipedia (of course).
 
+// For bevel gears with straight teeth:
+// * https://ijme.us/cd_11/PDF/Paper%20163%20ENG%20107.pdf
+
 // GEAR DEFINITIONS
 
 // OpenSCAD doesn't have user-defined types, but we're going to use a
@@ -350,8 +353,10 @@ module AG_gear(gear, th=3, convexity=10, center=false, herringbone=false) {
         AG_rack(gear, th=th, convexity=convexity, center=center,
                 herringbone=herringbone);
     } else {
-        AG_cylindrical_gear(gear, th=th, convexity=convexity, center=center,
-                            herringbone=herringbone) { children(); }
+        AG_cylindrical_gear(gear, th=th, convexity=convexity,
+                            center=center, herringbone=herringbone) {
+            children();
+        }
     }
 }
 
@@ -473,12 +478,12 @@ module AG_animate(pinion, gear, th=3, herringbone=false,
                       
     color(colors[0]) rotate([0, 0, mesh_rot]) rotate([0, 0, pinion_rot])
         AG_gear(pinion, th=th, herringbone=herringbone) {
-            circle(d=6, $fs=0.2);
+            children();
         }
     color(colors[1]) translate(mesh_vec) translate(gear_vec)
         rotate([0, 0, gear_rot])
             AG_gear(gear, th=th, herringbone=herringbone) {
-                circle(d=6, $fs=0.2);
+                children();
             }
 }
 
