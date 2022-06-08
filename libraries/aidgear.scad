@@ -15,7 +15,7 @@
 
 // OpenSCAD doesn't have user-defined types, but we're going to use a
 // vector as an aggregate data type to hold the parameters that define
-// the tooth pattern of a gear.  These accessor functions shows the
+// the tooth pattern of a gear.  These accessor functions show the
 // mapping from index to field.  Always use the accessor functions for
 // compatibility with future versions. 
 
@@ -35,60 +35,66 @@ function AG_herringbone(g)      = (len(g) > 9) ? g[9] : false;
 // Instead of creating these vectors by hand, there are AG_define_...
 // functions to define the desired gear.
 
-// TODO:  Should definitions accept the definition of another gear to
-// use as defaults?  This would make it simpler to define compatible
-// gears.
+AG_default_gear =
+    ["AG gear", "default gear", 15, 2, 28, 0, 0.25, 1, 0, false];
 
-// For most exterior cylindrical gears, like spur gears and helical gears.
+// For most external cylindrical gears, like spur gears and helical gears.
+// Any parameter left unspecified will be copied from the `template`.
 function AG_define_gear(
-    tooth_count=15,
+    tooth_count=undef,
     iso_module=undef, circular_pitch=undef, diametral_pitch=undef,
-    pressure_angle=28,
-    backlash_angle=0,
-    clearance=0.25,  // ISO value
-    thickness=1,
-    helix_angle=0,
-    herringbone=false,
-    name="spur gear"
+    pressure_angle=undef,
+    backlash_angle=undef,
+    clearance=undef,
+    thickness=undef,
+    helix_angle=undef,
+    herringbone=undef,
+    name="spur gear",
+    template=AG_default_gear
 ) =
     AG_define_universal("AG gear", name, tooth_count,
                         iso_module, circular_pitch, diametral_pitch,
                         pressure_angle, backlash_angle, clearance,
-                        thickness, helix_angle, herringbone);
+                        thickness, helix_angle, herringbone,
+                        template);
 
 // For interior gears.
 function AG_define_ring_gear(
-    tooth_count=15,
+    tooth_count=undef,
     iso_module=undef, circular_pitch=undef, diametral_pitch=undef,
-    pressure_angle=28,
-    backlash_angle=0,
-    clearance=0.25,  // ISO value
-    thickness=1,
-    helix_angle=0,
-    herringbone=false,
-    name="ring gear"
+    pressure_angle=undef,
+    backlash_angle=undef,
+    clearance=undef,
+    thickness=undef,
+    helix_angle=undef,
+    herringbone=undef,
+    name="ring gear",
+    template=AG_default_gear
 ) =
     AG_define_universal("AG ring", name, tooth_count,
                         iso_module, circular_pitch, diametral_pitch,
                         pressure_angle, backlash_angle, clearance,
-                        thickness, helix_angle, herringbone);
+                        thickness, helix_angle, herringbone,
+                        template);
 
 // For linear gear rack.
 function AG_define_rack(
-    tooth_count=15,
+    tooth_count=undef,
     iso_module=undef, circular_pitch=undef, diametral_pitch=undef,
-    pressure_angle=28,
-    backlash_angle=0,
-    clearance=0.25,  // ISO value
-    thickness=1,
-    helix_angle=0,
-    herringbone=false,
-    name="rack"
+    pressure_angle=undef,
+    backlash_angle=undef,
+    clearance=undef,
+    thickness=undef,
+    helix_angle=undef,
+    herringbone=undef,
+    name="rack",
+    template=AG_default_gear
 ) =
     AG_define_universal("AG rack", name, tooth_count,
                         iso_module, circular_pitch, diametral_pitch,
                         pressure_angle, backlash_angle, clearance,
-                        thickness, helix_angle, herringbone);
+                        thickness, helix_angle, herringbone,
+                        template);
 
 // For internal use.
 function AG_define_universal(
@@ -101,27 +107,44 @@ function AG_define_universal(
     clearance,
     thickness,
     helix_angle,
-    herringbone
+    herringbone,
+    template
 ) =
-    let (iso_module =
-            AG_as_module(iso_module, circular_pitch, diametral_pitch, 2))
+    let (m = AG_as_module(iso_module, circular_pitch, diametral_pitch,
+                          AG_module(template)),
+         z = is_undef(tooth_count) ? AG_tooth_count(template) : tooth_count,
+         alpha =
+            is_undef(pressure_angle) ? AG_pressure_angle(template) :
+                                       pressure_angle,
+         backlash =
+            is_undef(backlash_angle) ? AG_backlash_angle(template) :
+                                       backlash_angle,
+         c = is_undef(clearance) ? AG_clearance(template) : clearance,
+         th = is_undef(thickness) ? AG_thickness(template) : thickness,
+         beta =
+            is_undef(helix_angle) ? AG_helix_angle(template) :
+                                    helix_angle,
+         dblhelix =
+            is_undef(herringbone) ? AG_herringbone(template) :
+                                    herringbone
+    )
 
-    assert(tooth_count > 0,
+    assert(z > 0,
            "AG: tooth count must be positive")
-    assert(tooth_count == floor(tooth_count),
+    assert(z == floor(z),
            "AG: tooth_count must be an integer")
-    assert(iso_module > 0,
+    assert(m > 0,
            "AG: module size must be positive")
-    assert(0 < pressure_angle && pressure_angle < 45,
+    assert(0 < alpha && alpha < 45,
            "AG: pressure angle must be 0-45°")
-    assert(0 <= backlash_angle && backlash_angle < 360/tooth_count,
+    assert(0 <= backlash && backlash < 360/z,
            "AG: backlash angle should be small and positive")
-    assert(clearance >= 0,
+    assert(c >= 0,
            "AG: clearance cannot be negative")
-    assert(thickness >= 0, "AG: thickness cannot be negative")
-    assert(-90 < helix_angle && helix_angle < 90,
+    assert(th >= 0, "AG: thickness cannot be negative")
+    assert(-90 < beta && beta < 90,
            "AG: absolute value of the helix angle shold be less than 90°")
-    assert(!herringbone || helix_angle != 0,
+    assert(!dblhelix || beta != 0,
            "AG: herringbone gears require a non-zero helix angle")
 
 //    let (minimum_teeth = floor(2 / pow(sin(pressure_angle), 2)))
@@ -130,11 +153,7 @@ function AG_define_universal(
 //               "teeth to avoid undercuts given a pressure angle of ",
 //               pressure_angle, "°"))
 
-    [
-        type, name, tooth_count, iso_module,
-        pressure_angle, backlash_angle, clearance,
-        thickness, helix_angle, herringbone
-    ];
+    [ type, name, z, m, alpha, backlash, c, th, beta, dblhelix ];
 
 // Internally, we use ISO module.  This function converts various ways of
 // representing the tooth size to ISO module.
@@ -202,7 +221,8 @@ function AG_compatible(g1, g2) =
     )
     AG_module(g1) == AG_module(g2) &&
     AG_pressure_angle(g1) == AG_pressure_angle(g2) &&
-    helix1 == -helix2;
+    helix1 == -helix2 &&
+    (helix1 == 0 || AG_herringbone(g1) == AG_herringbone(g2));
 
 // The center distance is the spacing required between the centers of two
 // gears to have them mesh properly.

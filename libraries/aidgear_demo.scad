@@ -24,35 +24,30 @@ module demo(helix_angle=0, herringbone=false, th=8, bore_d=6) {
     }
 
     pinion =
-        AG_define_gear(tooth_count=11, iso_module=2,
+        AG_define_gear(tooth_count=11,
                        thickness=th,
                        helix_angle=helix_angle,
                        herringbone=herringbone,
                        name="pinion");
     G1 =
-        AG_define_gear(tooth_count=22, iso_module=2,
-                       thickness=th,
+        AG_define_gear(tooth_count=22,
                        helix_angle=-helix_angle,
-                       herringbone=herringbone,
+                       template=pinion,
                        name="G1");
     rack =
-        AG_define_rack(2*AG_tooth_count(pinion), iso_module=2,
-                       thickness=th,
+        AG_define_rack(2*AG_tooth_count(pinion),
                        helix_angle=-helix_angle,
-                       herringbone=herringbone,
+                       template=pinion,
                        name="rack");
     ring =
-        AG_define_ring_gear(24, iso_module=3, pressure_angle=20,
+        AG_define_ring_gear(24, iso_module=3,
+                            pressure_angle=20,
                             thickness=th,
                             helix_angle=helix_angle,
                             herringbone=herringbone,
                             name="internal gear");
     inner =
-        AG_define_gear(16, iso_module=3, pressure_angle=20,
-                       thickness=th,
-                       helix_angle=helix_angle,
-                       herringbone=herringbone,
-                       name="inner gear");
+        AG_define_gear(16, template=ring, name="inner gear");
 
     translate([0, 100, 0]) animate(pinion, rack);
     translate([-80, 0, 0]) animate(pinion, G1);
