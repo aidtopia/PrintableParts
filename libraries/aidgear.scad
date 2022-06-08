@@ -37,10 +37,10 @@ function AG_backing(g)          = (len(g) > 10) ? g[10] : 0;
 // the default gear serves as the default template for the gear
 // definition APIs.
 AG_default_gear =
-    ["AG gear", "default gear", 15, 2, 28, 0, 0.25, 1, 0, false, undef];
+    ["AG gear", "default gear", 15, 2, 28, 0, 0.25, 1, 0, false, 0];
 
 
-// Instead of creating addigional gear definitions by hand, we provide
+// Instead of creating additional gear definitions by hand, we provide
 // `AG_define_...` functions to define the desired gear.
 
 // For most external cylindrical gears, like spur gears and helical gears.
@@ -57,12 +57,15 @@ function AG_define_gear(
     name="spur gear",
     template=AG_default_gear
 ) =
-    AG_define_universal("AG gear", name, tooth_count,
-                        iso_module, circular_pitch, diametral_pitch,
+    let (
+        m = AG_as_module(iso_module, circular_pitch, diametral_pitch,
+                         AG_module(template)),
+        backing = 0
+    )
+    AG_define_universal("AG gear", name, tooth_count, m,
                         pressure_angle, backlash_angle, clearance,
                         thickness, helix_angle, herringbone,
-                        backing=undef,
-                        template=template);
+                        backing, template);
 
 // For internal gears.
 function AG_define_ring_gear(
@@ -74,16 +77,25 @@ function AG_define_ring_gear(
     thickness=undef,
     helix_angle=undef,
     herringbone=undef,
-    outer_to_pitch=undef,
+    pitch_to_rim=undef,
     name="ring gear",
     template=AG_default_gear
 ) =
-    AG_define_universal("AG ring", name, tooth_count,
-                        iso_module, circular_pitch, diametral_pitch,
+    let (
+        m = AG_as_module(iso_module, circular_pitch, diametral_pitch,
+                         AG_module(template)),
+        c = is_undef(clearance) ? AG_clearance(template) : clearance,
+        backing =
+            is_undef(pitch_to_rim) ?
+                AG_backing(template) == 0 ?
+                    (2 + c)*m :
+                    AG_backing(template) :
+                pitch_to_rim
+    )
+    AG_define_universal("AG ring", name, tooth_count, m,
                         pressure_angle, backlash_angle, clearance,
                         thickness, helix_angle, herringbone,
-                        backing=outer_to_pitch,
-                        template=template);
+                        backing, template);
 
 // For linear gear rack.
 function AG_define_rack(
@@ -99,19 +111,28 @@ function AG_define_rack(
     name="rack",
     template=AG_default_gear
 ) =
-    AG_define_universal("AG rack", name, tooth_count,
-                        iso_module, circular_pitch, diametral_pitch,
-                        pressure_angle, backlash_angle, clearance,
+    let (
+        m = AG_as_module(iso_module, circular_pitch, diametral_pitch,
+                         AG_module(template)),
+        c = is_undef(clearance) ? AG_clearance(template) : clearance,
+        backing =
+            is_undef(pitch_to_rim) ?
+                AG_backing(template) == 0 ?
+                    (2 + c)*m :
+                    AG_backing(template) :
+                pitch_to_rim
+    )
+    AG_define_universal("AG rack", name, tooth_count, m,
+                        pressure_angle, backlash_angle, c,
                         thickness, helix_angle, herringbone,
-                        backing=height_to_pitch,
-                        template=template);
+                        backing, template);
 
 // For internal use.
 function AG_define_universal(
     type,
     name,
     tooth_count,
-    iso_module, circular_pitch, diametral_pitch,
+    iso_module,
     pressure_angle,
     backlash_angle,
     clearance,
@@ -121,8 +142,7 @@ function AG_define_universal(
     backing,
     template
 ) =
-    let (m = AG_as_module(iso_module, circular_pitch, diametral_pitch,
-                          AG_module(template)),
+    let (m = iso_module,
          z = is_undef(tooth_count) ? AG_tooth_count(template) : tooth_count,
          alpha =
             is_undef(pressure_angle) ? AG_pressure_angle(template) :
@@ -137,13 +157,7 @@ function AG_define_universal(
                                     helix_angle,
          dblhelix =
             is_undef(herringbone) ? AG_herringbone(template) :
-                                    herringbone,
-         back =
-            is_undef(backing) ?
-                is_undef(AG_backing(template)) ?
-                    (2+c)*m :
-                    AG_backing(template) :
-                backing
+                                    herringbone
     )
 
     assert(z > 0,
@@ -163,7 +177,7 @@ function AG_define_universal(
            "AG: absolute value of the helix angle shold be less than 90°")
     assert(!dblhelix || beta != 0,
            "AG: herringbone gears require a non-zero helix angle")
-    assert(0 <= back,
+    assert(0 <= backing,
            "AG: the backing cannot be negative")
 
 //    let (minimum_teeth = floor(2 / pow(sin(pressure_angle), 2)))
@@ -173,7 +187,7 @@ function AG_define_universal(
 //               pressure_angle, "°"))
 
     [ type, name, z, m, alpha, backlash, c, th, beta, dblhelix,
-      back ];
+      backing ];
 
 // Internally, we use ISO module.  This function converts various ways of
 // representing the tooth size to ISO module.
@@ -320,12 +334,43 @@ function AG_spur_tooth_profile(g) =
         inv_path = involute_points(base_r, rolling0, rolling1),
         
         // Connect the root circle to the involute (in the normal case).
-        path =
+        edge1 =
             (root_r < start_r) ?
                 [[root_r, 0], each inv_path] : inv_path,
 
-        flipped = flipped_points(path)
+        edge2 = flipped_points(edge1),
         
+        dtheta = 360 / tooth_count,
+        
+        teeth = [ for (i = [1:tooth_count])
+            let (
+                theta = i * dtheta,
+                theta1 = theta - tooth_angle/2,
+                theta2 = theta + tooth_angle/2,
+                tooth_path = [
+                    each rotated_points(edge1, theta1),
+                    each rotated_points(edge2, theta2)
+                ]
+            )
+            each tooth_path
+        ],
+
+        backing = AG_backing(g),
+        rim = backing == 0 ? [] :
+            [ teeth[0],
+              each [
+                let (
+                    rim_r = pitch_r + backing,
+                    step_a = ($fa > 0) ? ($fa/360) : 1,
+                    step_s = ($fs > 0) ? $fs / (2*PI*rim_r) : 1,
+                    step = ($fn > 0) ? 1/$fn : min(step_a, step_s),
+                    bias = atan2(teeth[0].y, teeth[0].x)
+                )
+                for (i = [0:step:360])
+                   [ rim_r * cos(i+bias), rim_r * sin(i+bias) ]
+              ]
+            ]
+
         // TODO fillet at root circle
         // TODO tip relief
         // TODO crowning of tooth surface?
@@ -333,17 +378,7 @@ function AG_spur_tooth_profile(g) =
     
     assert(root_r > 0)
 
-    [ for (i = [1:tooth_count])
-        let (
-            theta = i * 360/tooth_count,
-            theta1 = theta - tooth_angle/2,
-            theta2 = theta1 + tooth_angle,
-            tooth_path =
-                [each rotated_points(path,    theta1),
-                 each rotated_points(flipped, theta2)]
-        )
-            each tooth_path
-    ];
+    [ each rim, each teeth ];
 
 function AG_rack_tooth_profile(g) =
     let (
@@ -420,31 +455,22 @@ module AG_cylindrical_gear(gear, convexity=10, center=false) {
     twist = AG_helix_twist(gear, w);
     profile = AG_tooth_profile(gear);
     drop = center ? th/2 : 0;
-    ring = AG_type(gear) == "AG ring";
-    od = ring ? AG_pitch_diameter(gear) + 2*AG_backing(gear) : 0;
 
     translate([0, 0, -drop])
     difference() {
         union() {
             linear_extrude(w, convexity=convexity, twist=twist)
-                difference() {
-                    if (ring) circle(d=od, $fs=0.2, $fa=3);
-                    polygon(profile);
-                }
+                polygon(profile);
             if (herringbone) {
                 translate([0, 0, w]) rotate([0, 0, -twist])
-                linear_extrude(w, convexity=convexity, twist=-twist) {
-                    difference() {
-                        if (ring) circle(d=od, $fs=0.2, $fa=3);
-                        polygon(profile);
-                    }
-                }
+                linear_extrude(w, convexity=convexity, twist=-twist)
+                    polygon(profile);
             }
         }
 
         // Mark tooth one
         m = AG_module(gear);
-        nudge = ring ? m : 0;
+        nudge = AG_type(gear) == "AG ring" ? m : 0;
         x = AG_root_diameter(gear)/2 + nudge;
         translate([x, 0, 0])
             linear_extrude(min(1, w), center=true, convexity=convexity)
