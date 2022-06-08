@@ -29,14 +29,19 @@ function AG_clearance(g)        = assert(len(g) > 6) g[6];
 function AG_thickness(g)        = assert(len(g) > 7) g[7];
 function AG_helix_angle(g)      = (len(g) > 8) ? g[8] : 0;
 function AG_herringbone(g)      = (len(g) > 9) ? g[9] : false;
+function AG_backing(g)          = (len(g) > 10) ? g[10] : 0;
 
 // Higher indexes are reserved for future use
 //
-// Instead of creating these vectors by hand, there are AG_define_...
-// functions to define the desired gear.
-
+// Here's a default gear.  We don't use AG_define_universal because
+// the default gear serves as the default template for the gear
+// definition APIs.
 AG_default_gear =
-    ["AG gear", "default gear", 15, 2, 28, 0, 0.25, 1, 0, false];
+    ["AG gear", "default gear", 15, 2, 28, 0, 0.25, 1, 0, false, undef];
+
+
+// Instead of creating addigional gear definitions by hand, we provide
+// `AG_define_...` functions to define the desired gear.
 
 // For most external cylindrical gears, like spur gears and helical gears.
 // Any parameter left unspecified will be copied from the `template`.
@@ -56,9 +61,10 @@ function AG_define_gear(
                         iso_module, circular_pitch, diametral_pitch,
                         pressure_angle, backlash_angle, clearance,
                         thickness, helix_angle, herringbone,
-                        template);
+                        backing=undef,
+                        template=template);
 
-// For interior gears.
+// For internal gears.
 function AG_define_ring_gear(
     tooth_count=undef,
     iso_module=undef, circular_pitch=undef, diametral_pitch=undef,
@@ -68,6 +74,7 @@ function AG_define_ring_gear(
     thickness=undef,
     helix_angle=undef,
     herringbone=undef,
+    outer_to_pitch=undef,
     name="ring gear",
     template=AG_default_gear
 ) =
@@ -75,7 +82,8 @@ function AG_define_ring_gear(
                         iso_module, circular_pitch, diametral_pitch,
                         pressure_angle, backlash_angle, clearance,
                         thickness, helix_angle, herringbone,
-                        template);
+                        backing=outer_to_pitch,
+                        template=template);
 
 // For linear gear rack.
 function AG_define_rack(
@@ -87,6 +95,7 @@ function AG_define_rack(
     thickness=undef,
     helix_angle=undef,
     herringbone=undef,
+    height_to_pitch=undef,
     name="rack",
     template=AG_default_gear
 ) =
@@ -94,7 +103,8 @@ function AG_define_rack(
                         iso_module, circular_pitch, diametral_pitch,
                         pressure_angle, backlash_angle, clearance,
                         thickness, helix_angle, herringbone,
-                        template);
+                        backing=height_to_pitch,
+                        template=template);
 
 // For internal use.
 function AG_define_universal(
@@ -108,6 +118,7 @@ function AG_define_universal(
     thickness,
     helix_angle,
     herringbone,
+    backing,
     template
 ) =
     let (m = AG_as_module(iso_module, circular_pitch, diametral_pitch,
@@ -126,7 +137,13 @@ function AG_define_universal(
                                     helix_angle,
          dblhelix =
             is_undef(herringbone) ? AG_herringbone(template) :
-                                    herringbone
+                                    herringbone,
+         back =
+            is_undef(backing) ?
+                is_undef(AG_backing(template)) ?
+                    (2+c)*m :
+                    AG_backing(template) :
+                backing
     )
 
     assert(z > 0,
@@ -146,6 +163,8 @@ function AG_define_universal(
            "AG: absolute value of the helix angle shold be less than 90°")
     assert(!dblhelix || beta != 0,
            "AG: herringbone gears require a non-zero helix angle")
+    assert(0 <= back,
+           "AG: the backing cannot be negative")
 
 //    let (minimum_teeth = floor(2 / pow(sin(pressure_angle), 2)))
 //    assert(tooth_count >= minimum_teeth,
@@ -153,7 +172,8 @@ function AG_define_universal(
 //               "teeth to avoid undercuts given a pressure angle of ",
 //               pressure_angle, "°"))
 
-    [ type, name, z, m, alpha, backlash, c, th, beta, dblhelix ];
+    [ type, name, z, m, alpha, backlash, c, th, beta, dblhelix,
+      back ];
 
 // Internally, we use ISO module.  This function converts various ways of
 // representing the tooth size to ISO module.
@@ -187,6 +207,7 @@ module AG_echo(g) {
              "thickness:\t", AG_thickness(g), " mm\n",
              "helix angle:\t", AG_helix_angle(g), " degrees",
                  AG_herringbone(g) ? " (herringbone)\n" : "\n",
+             "backing:\t\t", AG_backing(g), " mm\n",
              "pitch diameter:\t", AG_pitch_diameter(g), " mm\n"));
 }
 
@@ -338,10 +359,13 @@ function AG_rack_tooth_profile(g) =
         run = rise*tan(alpha),
         flat = (CP - 2*run)/2,
         tooth_count = AG_tooth_count(g),
-        w = CP * tooth_count
+        w = CP * tooth_count,
+        height_to_pitch = AG_backing(g),
+        foundation = -height_to_pitch
     )
     
     [
+        [0, foundation],
         [0, root_y],
         each [
             for (i=[1:tooth_count])
@@ -357,24 +381,13 @@ function AG_rack_tooth_profile(g) =
                     [rtip, tip_y], [rroot, root_y]
                 ]
         ],
-        [w, root_y]
+        [w, root_y],
+        [w, foundation]
     ];
 
 function AG_rack_width(rack) =
      assert(AG_type(rack) == "AG rack")
      AG_circular_pitch(rack) * AG_tooth_count(rack);
-
-function AG_rack_profile(rack, height_to_pitch=undef) =
-    assert(AG_type(rack) == "AG rack")
-    let (
-        // I browsed some catalogs to come up with this formula for
-        // the default for `height_to_pitch`.
-        h = is_undef(height_to_pitch) ? 10*(AG_module(rack) + 0.5) :
-                                        height_to_pitch,
-        foundation = -h,
-        w = AG_rack_width(rack)
-    )
-    [ [0, foundation], each AG_tooth_profile(rack), [w, foundation] ];
 
 // This is the shear required for a helical rack.
 function AG_helix_shear(g) = tan(AG_helix_angle(g));
@@ -408,7 +421,7 @@ module AG_cylindrical_gear(gear, convexity=10, center=false) {
     profile = AG_tooth_profile(gear);
     drop = center ? th/2 : 0;
     ring = AG_type(gear) == "AG ring";
-    od = ring ? AG_root_diameter(gear) + 5*AG_module(gear) : 0;
+    od = ring ? AG_pitch_diameter(gear) + 2*AG_backing(gear) : 0;
 
     translate([0, 0, -drop])
     difference() {
@@ -447,13 +460,13 @@ module AG_cylindrical_gear(gear, convexity=10, center=false) {
     }
 }
 
-module AG_rack(rack, height_to_pitch=undef, convexity=10, center=false) {
+module AG_rack(rack, convexity=10, center=false) {
     assert(AG_type(rack) == "AG rack");
     th = AG_thickness(rack);
     herringbone = AG_herringbone(rack);
     w = herringbone ? th/2 : th;
     shear = AG_helix_shear(rack);
-    profile = AG_rack_profile(rack, height_to_pitch);
+    profile = AG_rack_tooth_profile(rack);
     drop = center ? th/2 : 0;
 
     union() {
