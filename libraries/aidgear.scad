@@ -44,7 +44,8 @@ AG_default_gear =
 // `AG_define_...` functions to define the desired gear.
 
 // For most external cylindrical gears, like spur gears and helical gears.
-// Any parameter left unspecified will be copied from the `template`.
+// Any parameter left unspecified will be set to be compatible with
+// the mate.
 function AG_define_gear(
     tooth_count=undef,
     iso_module=undef, circular_pitch=undef, diametral_pitch=undef,
@@ -55,17 +56,17 @@ function AG_define_gear(
     helix_angle=undef,
     herringbone=undef,
     name="spur gear",
-    template=AG_default_gear
+    mate=AG_default_gear
 ) =
     let (
         m = AG_as_module(iso_module, circular_pitch, diametral_pitch,
-                         AG_module(template)),
+                         AG_module(mate)),
         backing = 0
     )
     AG_define_universal("AG gear", name, tooth_count, m,
                         pressure_angle, backlash_angle, clearance,
                         thickness, helix_angle, herringbone,
-                        backing, template);
+                        backing, mate);
 
 // For internal gears.
 function AG_define_ring_gear(
@@ -79,17 +80,17 @@ function AG_define_ring_gear(
     herringbone=undef,
     pitch_to_rim=undef,
     name="ring gear",
-    template=AG_default_gear
+    mate=AG_default_gear
 ) =
     let (
         m = AG_as_module(iso_module, circular_pitch, diametral_pitch,
-                         AG_module(template)),
-        c = is_undef(clearance) ? AG_clearance(template) : clearance,
+                         AG_module(mate)),
+        c = is_undef(clearance) ? AG_clearance(mate) : clearance,
         backing =
             is_undef(pitch_to_rim) ?
-                AG_backing(template) == 0 ?
+                AG_backing(mate) == 0 ?
                     2*m :
-                    AG_backing(template) :
+                    AG_backing(mate) :
                 pitch_to_rim,
         addendum = m
     )
@@ -99,7 +100,7 @@ function AG_define_ring_gear(
     AG_define_universal("AG ring", name, tooth_count, m,
                         pressure_angle, backlash_angle, clearance,
                         thickness, helix_angle, herringbone,
-                        backing, template);
+                        backing, mate);
 
 // For linear gear rack.
 function AG_define_rack(
@@ -113,17 +114,17 @@ function AG_define_rack(
     herringbone=undef,
     height_to_pitch=undef,
     name="rack",
-    template=AG_default_gear
+    mate=AG_default_gear
 ) =
     let (
         m = AG_as_module(iso_module, circular_pitch, diametral_pitch,
-                         AG_module(template)),
-        c = is_undef(clearance) ? AG_clearance(template) : clearance,
+                         AG_module(mate)),
+        c = is_undef(clearance) ? AG_clearance(mate) : clearance,
         backing =
             is_undef(height_to_pitch) ?
-                AG_backing(template) == 0 ?
+                AG_backing(mate) == 0 ?
                     (2 + c)*m :
-                    AG_backing(template) :
+                    AG_backing(mate) :
                 height_to_pitch,
         dedendum = (1 + c)*m
     )
@@ -133,7 +134,7 @@ function AG_define_rack(
     AG_define_universal("AG rack", name, tooth_count, m,
                         pressure_angle, backlash_angle, c,
                         thickness, helix_angle, herringbone,
-                        backing, template);
+                        backing, mate);
 
 // For internal use.
 function AG_define_universal(
@@ -148,23 +149,23 @@ function AG_define_universal(
     helix_angle,
     herringbone,
     backing,
-    template
+    mate
 ) =
     let (m = iso_module,
-         z = is_undef(tooth_count) ? AG_tooth_count(template) : tooth_count,
+         z = is_undef(tooth_count) ? AG_tooth_count(mate) : tooth_count,
          alpha =
-            is_undef(pressure_angle) ? AG_pressure_angle(template) :
+            is_undef(pressure_angle) ? AG_pressure_angle(mate) :
                                        pressure_angle,
          backlash =
-            is_undef(backlash_angle) ? AG_backlash_angle(template) :
+            is_undef(backlash_angle) ? AG_backlash_angle(mate) :
                                        backlash_angle,
-         c = is_undef(clearance) ? AG_clearance(template) : clearance,
-         th = is_undef(thickness) ? AG_thickness(template) : thickness,
+         c = is_undef(clearance) ? AG_clearance(mate) : clearance,
+         th = is_undef(thickness) ? AG_thickness(mate) : thickness,
          beta =
-            is_undef(helix_angle) ? AG_helix_angle(template) :
+            is_undef(helix_angle) ? -AG_helix_angle(mate) :
                                     helix_angle,
          dblhelix =
-            is_undef(herringbone) ? AG_herringbone(template) :
+            is_undef(herringbone) ? AG_herringbone(mate) :
                                     herringbone
     )
 

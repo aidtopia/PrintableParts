@@ -67,5 +67,71 @@ module demo(helix_angle=0, herringbone=false, th=8, bore_d=6) {
     }
 }
 
-demo(helix_angle=Helix_Angle, herringbone=Herringbone, th=Thickness,
-     bore_d=Bore_Diameter);
+function define_gear_train(pinion, tooth_counts=[], pos=0, rot=0) =
+    assert(AG_type(pinion) == "AG gear")
+    let (
+        z = len(tooth_counts) == 0 ? 0 : tooth_counts[0],
+        next = z == 0 ? [] : AG_define_gear(z, mate=pinion),
+        rest = len(tooth_counts) <= 1 ? [] :
+            [ for (i=[1:len(tooth_counts)-1]) tooth_counts[i] ],
+        move = next == [] ? 0 : AG_center_distance(pinion, next),
+        turn = (z%2 == 1) ? 0 : (pos > 0) ? -1 : 1
+    )
+    next == [] ?
+           [ [ pinion, pos, rot ] ] :
+           [ [ pinion, pos, rot ],
+             each define_gear_train(next, rest, pos+move, rot+turn) ];
+
+module draw_gear_train(train, bore_d=6, baseplate=false, nozzle_d=0.4) {
+    module footprint(x0, x1, max_d) {
+        hull() {
+            translate([x0, 0, 0]) circle(d=max_d);
+            translate([x1, 0, 0]) circle(d=max_d);
+        }
+    }
+
+    first = train[0];
+    last = train[len(train)-1];
+    pad = $preview ? 0 : 2*AG_addendum(first[0]);
+
+    translate([0, 0, baseplate && $preview ? 1.2 : 0])
+        for (i = [0:len(train)-1]) {
+            let (g = train[i], z = AG_tooth_count(g[0]))
+            translate([g[1] + i*pad, 0, 0]) rotate([0, 0, g[2]*180/z])
+                AG_cylindrical_gear(g[0]) { circle(d=bore_d, $fs=0.2); }
+        }
+
+    if (baseplate) {
+        max_d  = max([ for (t=train) let(g=t[0]) AG_outer_diameter(g) ]);
+        max_th = max([ for (t=train) let(g=t[0]) AG_thickness(g) ]);
+        x0 = first[1] + (max_d - AG_outer_diameter(first[0]))/2;
+        x1 = last[1]  - (AG_outer_diameter(last[0] ) - max_d)/2;
+        band_w = max(6, bore_d);
+        color("coral") translate([0, $preview ? 0 : max_d + band_w, 0]) {
+            linear_extrude(1.2, convexity=10) {
+                difference() {
+                    offset(delta= band_w/2) { footprint(x0, x1, max_d); }
+                    offset(delta=-band_w/2) { footprint(x0, x1, max_d); }
+                }
+                translate([first[1] - AG_outer_diameter(first[0])/2, -band_w, 0])
+                    square([x1 - x0 + max_d, 2*band_w]);
+            }
+            linear_extrude(1.2 + max_th + 1.2) {
+                for (t = train)
+                    translate([t[1], 0, 0]) circle(d=bore_d-nozzle_d/2, $fs=nozzle_d/2);
+            }
+        }
+    }
+}
+
+if (true) {
+    pinion =
+        AG_define_gear(11, helix_angle=Helix_Angle,
+                       herringbone=Herringbone, thickness=Thickness,
+                       name="pinion");
+    train = define_gear_train(pinion, [22, 33, 44]);
+    draw_gear_train(train, bore_d=Bore_Diameter, baseplate=true);
+} else {
+    demo(helix_angle=Helix_Angle, herringbone=Herringbone,
+         th=Thickness, bore_d=Bore_Diameter);
+}
