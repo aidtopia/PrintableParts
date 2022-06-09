@@ -88,10 +88,14 @@ function AG_define_ring_gear(
         backing =
             is_undef(pitch_to_rim) ?
                 AG_backing(template) == 0 ?
-                    (2 + c)*m :
+                    2*m :
                     AG_backing(template) :
-                pitch_to_rim
+                pitch_to_rim,
+        addendum = m
     )
+    assert(backing == 0 || backing >= addendum,
+           str("AG: pitch to rim should be 0 or at least as large ",
+               "as the addendum of ", addendum, " mm."))
     AG_define_universal("AG ring", name, tooth_count, m,
                         pressure_angle, backlash_angle, clearance,
                         thickness, helix_angle, herringbone,
@@ -116,12 +120,16 @@ function AG_define_rack(
                          AG_module(template)),
         c = is_undef(clearance) ? AG_clearance(template) : clearance,
         backing =
-            is_undef(pitch_to_rim) ?
+            is_undef(height_to_pitch) ?
                 AG_backing(template) == 0 ?
                     (2 + c)*m :
                     AG_backing(template) :
-                pitch_to_rim
+                height_to_pitch,
+        dedendum = (1 + c)*m
     )
+    assert(backing == 0 || backing >= dedendum,
+           str("AG: height to pitch should be 0 or at least as large ",
+               "as the dedendum of ", dedendum, " mm."))
     AG_define_universal("AG rack", name, tooth_count, m,
                         pressure_angle, backlash_angle, c,
                         thickness, helix_angle, herringbone,
@@ -245,6 +253,12 @@ function AG_root_diameter(g)    =
 function AG_addendum(g)         = 1.00 * AG_module(g);
 
 function AG_dedendum(g)         = (1.00 + AG_clearance(g)) * AG_module(g);
+
+function AG_outer_diameter(g)   =
+    let (t = AG_type(g))
+    t == "AG gear" ? AG_tips_diameter(g) :
+    t == "AG ring" ? AG_pitch_diameter(g) + 2*AG_backing(g) :
+    undef;
 
 // Returns true if the two gears can mesh.
 function AG_compatible(g1, g2) =
@@ -514,6 +528,28 @@ module AG_rack(rack, convexity=10, center=false) {
             ]) {
                 linear_extrude(w, convexity=convexity) polygon(profile);
             }
+        }
+    }
+}
+
+module AG_compound_gear(g1, g2, colors=["gold", "cornflowerblue"],
+                        convexity=10, center=false) {
+    th1 = AG_thickness(g1);
+    th2 = AG_thickness(g2);
+    total_th = th1 + th2;
+    drop = center ? total_th/2 : 0;
+
+    translate([0, 0, -drop]) difference() {
+        union() {
+            color(colors[0])
+                AG_gear(g1, convexity=convexity);
+            color(colors[1]) translate([0, 0, th1])
+                AG_gear(g2, convexity=convexity);
+        }
+
+        translate([0, 0, -1])
+        linear_extrude(total_th+2, convexity=convexity) {
+            children();
         }
     }
 }

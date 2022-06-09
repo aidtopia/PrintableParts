@@ -54,6 +54,11 @@ module demo(helix_angle=0, herringbone=false, th=8, bore_d=6) {
     translate([ 40, 0, 0]) animate(G1, pinion);
     translate([ 10, -100, 0]) animate(inner, ring);
 
+    translate([100, -100, 0])
+        AG_compound_gear(G1, pinion) {
+            circle(d=bore_d, $fs=0.2);
+        }
+
     if ($preview && $t == 0) {
         AG_echo(pinion);
         AG_echo(G1);
