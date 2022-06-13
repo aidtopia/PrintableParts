@@ -24,7 +24,7 @@ module explode(distance, direction=zhat) {
     }
 }
 
-module cross_section(plane="xz", keep=false, cut_size=250, center=false) {
+module cross_section(plane="xy", keep=false, cut_size=250, center=false) {
     if (plane == "" || plane == "none") {
         children();
     } else {
@@ -72,8 +72,8 @@ module cat_grass_planter(wall_th=3, perf_d=1.5, nozzle_d=0.4) {
 
     water_id = soil_od + nozzle_d;
     water_od = water_id + 2*wall_th;
-    water_h = soil_depth;
-    riser_h = 0.75*water_h;
+    water_h = 40;
+    riser_h = 0.6*water_h;
 
     tube_id = 12;
     tube_od = tube_id + wall_th;
@@ -199,17 +199,26 @@ module cat_grass_planter(wall_th=3, perf_d=1.5, nozzle_d=0.4) {
     }
     
     module lid() {
-        perf_d = 4.2;
+        perf_d = 5;
+        perf_spacing = perf_d + 2*nozzle_d;
         tube_notch = tube_od + 2*nozzle_d;
         difference() {
             union() {
                 linear_extrude(wall_th, convexity=10)
                     footprint(lid_od);
-                translate(-wall_th*zhat)
+                translate(-wall_th*zhat) {
                     linear_extrude(wall_th, convexity=10) difference() {
                         footprint(lid_id);
-                        footprint(lid_id - 2*wall_th);
+                        offset(delta=-wall_th) footprint(lid_id);
                     }
+                    
+                    
+                    linear_extrude(wall_th, convexity=10)
+                        intersection() {
+                            translate([(lid_id - tube_id)/2, 0, 0])circle(d=tube_notch+2*wall_th);
+                            footprint(lid_id);
+                        }
+                }
             }
             
             translate([(lid_id - tube_id)/2, 0, -wall_th-1])
@@ -222,8 +231,8 @@ module cat_grass_planter(wall_th=3, perf_d=1.5, nozzle_d=0.4) {
             translate([0, 0, -wall_th-1])
             linear_extrude(2*wall_th+2, convexity=10) {
                 r = effective_r(lid_id) - perf_d;
-                for (y = [-lid_id/2:5:lid_id/2]) {
-                    for (x = [-lid_id/2:5:lid_id/2-tube_od]) {
+                for (y = [-lid_id/2:perf_spacing:lid_id/2]) {
+                    for (x = [-lid_id/2:perf_spacing:lid_id/2-tube_od]) {
                         if (norm([x, y]) < r) {
                             translate([x, y, 0]) square(perf_d, center=true);
                         }
@@ -231,19 +240,14 @@ module cat_grass_planter(wall_th=3, perf_d=1.5, nozzle_d=0.4) {
                 }
             }
         }
-        
-        // Add back a connector that was lost to the tube notch.
-        translate([(lid_id - tube_id - tube_notch)/2 - (5-perf_d), -5/2, 0])
-            cube([5 - perf_d, 5, wall_th]);
     }
     
     if ($preview) {
-        cross_section(plane="xz") explode(2*riser_h, zhat) {
+        cross_section(plane="none") explode(2*riser_h, zhat) {
             water_box();
             translate((riser_h + wall_th)*zhat) explode(0.6*soil_h, zhat) {
                 color("orange") soil_box();
-                translate((soil_h + wall_th)*zhat) color("green")
-                    lid();
+                color("green") translate((soil_h + wall_th)*zhat) lid();
             }
         }
     } else {
