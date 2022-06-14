@@ -74,7 +74,7 @@ module AD_din_rail_mountable(depth=7.5, nozzle_d=0.4) {
         translate([0, 0, center ? 0 : length/2])
         linear_extrude(length, convexity=4, center=true) {
             // the twist
-            projection() 
+            offset(delta=nozzle_d/2) projection() 
                 translate([-depth, 35/2, 0])
                     linear_extrude(10, twist=-20)
                         translate([depth, -35/2])
@@ -93,8 +93,10 @@ module AD_din_rail_mountable(depth=7.5, nozzle_d=0.4) {
         polygon(profile);
     }
     
-    module slide_clip(delta=0) {
+    module slide_clip(grip=10, delta=0) {
+        extent = -(14 + grip);
         intersection() {
+            // the end of the clip
             linear_extrude(20, convexity=10)
                 offset(delta=delta)
                     polygon([
@@ -106,23 +108,42 @@ module AD_din_rail_mountable(depth=7.5, nozzle_d=0.4) {
                         [ 3,  0]
                     ]);
 
+            // the side of the clip
             translate([-7, 0, 0]) rotate([0, 90, 0])
             linear_extrude(14, convexity=10)
                 offset(delta=delta)
                     polygon([
-                        [ 0,  2],
-                        [-2,  0],
-                        [-20, 0],
-                        [-20, 2],
+                        [ 0,  2-nozzle_d/2],
+                        [ 0,  0],
+                        [extent, 0],
+                        [extent, 2],
                         [-14.5, 2],
                         [-14, 2.5],
                         [-14, 5],
-                        [-5, 5],
+                        [-4, 5],
                         [-2, 3],
-                        [-2, 2],
-                        [-4,  2],
-                        [-3,  2]
+                        [-2, 2-nozzle_d/2]
                     ]);
+
+            // the top of the clip
+            rotate([-90, 0, 0])
+            linear_extrude(5, convexity=10)
+                offset(delta=delta)
+                    polygon([
+                        [ -5,   0 ],
+                        [ -5,  -5 ],
+                        [ -3,  -5 ],
+                        [ -3, -11 ],
+                        [ -5, -11 ],
+                        [ -5, extent ],
+                        [  5, extent ],
+                        [  5, -11 ],
+                        [  3, -11 ],
+                        [  3,  -5 ],
+                        [  5,  -5 ],
+                        [  5,   0 ]
+                    ]);
+
         }
     }
 
@@ -137,9 +158,13 @@ module AD_din_rail_mountable(depth=7.5, nozzle_d=0.4) {
             din_cutout(length=100, center=true);
         
         // Make room for the slide clip to slide.
-        for (dy = [0:2]) 
+        for (dy = [0:1:4])
             translate([0, -35/2 + dy, 0]) rotate([90, 0, 0])
                 slide_clip(delta=nozzle_d/2);
+
+        // Remove the center of the bridge over the lower rail to avoid
+        // sagging that could interfere with a tight fit.
+        translate([0, -(35-5)/2, 5]) cube([10, 5+nozzle_d, 4], center=true);
     }
     translate([0, -35/2 + 1, 0]) rotate([90, 0, 0])
         slide_clip();
