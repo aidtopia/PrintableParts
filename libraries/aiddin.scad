@@ -110,7 +110,7 @@ module AD_din_rail_mountable(depth=7.5, nozzle_d=0.4) {
 
             // the side of the clip
             translate([-7, 0, 0]) rotate([0, 90, 0])
-            linear_extrude(14, convexity=10)
+            linear_extrude(14, convexity=4)
                 offset(delta=delta)
                     polygon([
                         [ 0,  2-nozzle_d/2],
@@ -127,7 +127,7 @@ module AD_din_rail_mountable(depth=7.5, nozzle_d=0.4) {
 
             // the top of the clip
             rotate([-90, 0, 0])
-            linear_extrude(5, convexity=10)
+            linear_extrude(5, convexity=4)
                 offset(delta=delta)
                     polygon([
                         [ -5,   0 ],
@@ -189,15 +189,16 @@ din_depth = 7.5;
 //AD_din_rail_profile(depth=din_depth);
 //AD_din_rail(depth=din_depth, center=true);
 color("green")
-//translate([-20, 0, 0])
+translate([-20, 0, 0])
 AD_din_rail_mountable(depth=din_depth) {
-//    widget1();
+    widget1();
 }
-//color("yellow") translate([20, 0, 0]) AD_din_rail_mountable(depth=din_depth) { widget2(); }
-
 
 if (false) {
-color("yelow") translate([-5.1, -35, 0]) difference() {
+color("yellow") translate([20, 0, 0]) AD_din_rail_mountable(depth=din_depth) { widget2(); }
+
+
+color("yellow") translate([-5.1, -35, 0]) difference() {
     cube([10.2, 20, 7]);
     translate([-1, 4.5, 3.8]) cube([10.2+2, 22, 1.4]);
     translate([-1, 17, 1.8]) cube([10.2+2, 5, 2.2]);
