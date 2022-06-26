@@ -68,4 +68,57 @@ module make_coins(coins=USD_coins) {
     }
 }
 
-make_coins();
+module easel(panel_h=100, panel_th=5, peg_th=4, th=6, angle=60, nozzle_d=0.4) {
+    peg_l = panel_th+2;
+    outer_r = panel_h/20;
+    inner_r = 2/3*outer_r;
+
+    module triangle(hypot=panel_h) {
+        // A right triangle whose hypotenuse has unit length.
+        tri = [
+            [0, 0],
+            [cos(angle), 0],
+            [0, sin(angle)]
+        ];
+        scale([hypot, hypot]) polygon(tri);
+    }
+    
+    module peg(l, th) {
+        translate([0, 0, th/2 - nozzle_d])
+            rotate([0, 90, 0])
+                linear_extrude(l)
+                    translate([0, -th/2])
+                        square(th-nozzle_d);
+    }
+    
+    module pegs(l, th, panel_h, margin, delta) {
+        translate([0, panel_h*sin(angle), 0])
+        rotate([0, 0, 90-angle]) translate([delta, 0, 0]) {
+            translate([0, 0        - margin, 0]) peg(l, th);
+            translate([0, -panel_h + margin, 0]) peg(l, th);
+        }
+    }
+
+    module right_bracket() {
+        linear_extrude(th, center=true) difference() {
+            offset(r=outer_r, $fs=nozzle_d/2) triangle();
+            offset(r=inner_r, $fs=nozzle_d/2)
+                offset(delta=-(inner_r+outer_r)) triangle();
+        }
+        
+        // Translation pushes the pegs to the edge of the bracket
+        // so that it can print without supports.
+        translate([0, 0, (peg_th - th)/2])
+        pegs(peg_l, peg_th, panel_h, margin=peg_th, delta=outer_r);
+    }
+    
+    module left_bracket() {
+        mirror([-1, 0, 0]) right_bracket();
+    }
+    
+    base_x = 2*outer_r + 1;
+    translate([-base_x/2, 0, th/2]) left_bracket();
+    translate([ base_x/2, 0, th/2]) right_bracket();
+}
+
+easel(angle=60);
