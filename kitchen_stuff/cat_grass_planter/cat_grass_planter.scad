@@ -199,7 +199,7 @@ module cat_grass_planter(wall_th=3, perf_d=1.5, nozzle_d=0.4) {
     }
     
     module lid() {
-        perf_d = 5;
+        perf_d = 10;
         perf_spacing = perf_d + 2*nozzle_d;
         tube_notch = tube_od + 2*nozzle_d;
         difference() {
@@ -230,11 +230,14 @@ module cat_grass_planter(wall_th=3, perf_d=1.5, nozzle_d=0.4) {
 
             translate([0, 0, -wall_th-1])
             linear_extrude(2*wall_th+2, convexity=10) {
-                r = effective_r(lid_id) - perf_d;
-                for (y = [-lid_id/2:perf_spacing:lid_id/2]) {
-                    for (x = [-lid_id/2:perf_spacing:lid_id/2-tube_od]) {
-                        if (norm([x, y]) < r) {
-                            translate([x, y, 0]) square(perf_d, center=true);
+                intersection() {
+                    offset(delta=-2*wall_th) footprint(lid_id);
+                    union() {
+                        for (y = [-lid_id/2:perf_spacing:lid_id/2]) {
+                            for (x = [-lid_id/2:perf_spacing:lid_id/2-tube_od]) {
+                                translate([x, y, 0])
+                                    square(perf_d, center=true);
+                            }
                         }
                     }
                 }
