@@ -106,7 +106,8 @@ machine_screws = [
             ["flat",            5.6,        0.0,        1.65        ],
             ["pan",             6.0,        2.4,        0.0         ]],
         [ // nut                nut_w       nut_h           sides
-            ["hex",             5.5,        2.4,            6       ]]],
+            ["hex",             5.5,        2.4,            6       ],
+            ["insert",          thou(199),  3.8,            1       ]]],
     ["M4",      4.5,        4.3,        3.5,        0.70,
         [ // head shape         head_d      head_h      sink_h
             ["flat",            7.5,        0.0,        2.20        ],
@@ -148,18 +149,20 @@ module bolt_hole(size, l, threads="none", head="pan", table=machine_screws, nozz
     threads_tokens = split(threads, " ");
     assert(len(threads_tokens) > 0);
 
-    thread_types = [  //    shaft_d neednut pocket  recessed
-        ["none",            free_d, false,  false,  false],
-        ["pocket",          free_d, true,   true,   false],
-        ["recessed",        free_d, true,   false,  true],
-        ["self-tapping",    tap_d,  false,  false,  false]
+    thread_types = [  //    shaft_d neednut pocket  recessed insert
+        ["insert",          free_d, true,   false,  false,   true],
+        ["none",            free_d, false,  false,  false,   false],
+        ["pocket",          free_d, true,   true,   false,   false],
+        ["recessed",        free_d, true,   false,  true,    false],
+        ["self-tapping",    tap_d,  false,  false,  false,   false]
     ];
 
     thread_synonyms = [
         ["",                "none"],
+        ["free",            "none"],
         ["pilot",           "self-tapping"],
-        ["self tapped",     "self-tapping"],
-        ["self tapping",    "self-tapping"],
+        ["self tapped",     "self-tapping"],  // multi-word keys don't
+        ["self tapping",    "self-tapping"],  // work right now
         ["self-tapped",     "self-tapping"],
         ["tapped",          "self-tapping"]
     ];
@@ -173,10 +176,14 @@ module bolt_hole(size, l, threads="none", head="pan", table=machine_screws, nozz
     neednut = thread_params[2];
     pocket  = thread_params[3];
     recess  = thread_params[4];
+    insert  = thread_params[5];
 
     nut_tokens =
-        let(tail = drop_front(threads_tokens))
-            len(tail) > 1 && back(tail) == "nut" ? drop_back(tail) : tail;
+        insert ?
+            threads_tokens :
+            let(tail = drop_front(threads_tokens))
+                len(tail) > 1 && back(tail) == "nut" ?
+                    drop_back(tail) : tail;
     nut_string = join(nut_tokens, " ");
     nut_params =
         neednut ?
@@ -244,14 +251,19 @@ module bolt_hole(size, l, threads="none", head="pan", table=machine_screws, nozz
         // The shaft of the screw.
         translate([0, 0, -l - 0.1]) cylinder(h=l + 0.2, d=shaft_d + nozzle_d);
     
-        if (recess || pocket) {
+        if (neednut) {
             // Recess or pocket for a nut.
             nut_d = nut_diameter(nut_w, nut_sides, nozzle_d);
             protrusion = 2*pitch;
             h = nut_h + protrusion + (pocket ? 0 : 0.1);
-            depth = -l - (pocket ? 0 : 0.1);
+            depth = insert ? -h + protrusion/2 : -l - (pocket ? 0 : 0.1);
             translate([0, 0, depth]) {
-                rotate([0, 0, 90]) cylinder(h=h, d=nut_d, $fn=nut_sides);
+                rotate([0, 0, 90])
+                    if (nut_sides > 1) {
+                        cylinder(h=h, d=nut_d, $fn=nut_sides);
+                    } else {
+                        cylinder(h=h, d=nut_d);
+                    }
                 if (pocket) {
                     pocket_w = nut_w + nozzle_d;
                     translate([-pocket_w/2, 0, 0])
@@ -328,7 +340,7 @@ module test() {
     spacing = 9;
     i = [spacing, 0, 0];
     depth = 10;
-    w = 6*spacing;
+    w = 8*spacing;
     h = 10;
     
     translate([0, $preview ? 0: depth, $preview ? 0 : h])
@@ -344,8 +356,9 @@ module test() {
             translate(3*i) bolt_hole("M3", h, head="flat head");
             translate(4*i) bolt_hole("#2-56", h, "recessed hex nut", head=" oval");
             translate(5*i) bolt_hole("#4-40", h, "self-tapping", "recessed pan");
-            translate(6*i) bolt_hole("#6-32", h, "recessed hex nut");
+            translate(6*i) bolt_hole("#6-32", h,  "recessed hex nut");
             translate(7*i) bolt_hole("M3", h+0.1, "recessed hex nut");
+            translate(8*i) bolt_hole("M3", h,     "insert");
         }
         if ($preview) {
             // cutaway
