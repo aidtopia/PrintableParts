@@ -113,7 +113,8 @@ machine_screws = [
             ["flat",            7.5,        0.0,        2.20        ],
             ["pan",             8.0,        3.1,        0.0         ]],
         [ // nut                nut_w       nut_h           sides
-            ["hex",             7.0,        3.2,            6       ]]]
+            ["hex",             7.0,        3.2,            6       ],
+            ["insert",          thou(221),  4.7,            1       ]]]
 ];
 
 function find_bolt_params(size, table) =
