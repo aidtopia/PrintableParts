@@ -7,9 +7,6 @@
 
 use <aidutil.scad>
 
-// Modifies almost any widget (provided as children to the invocation of
-// this module) to make it mountable to 35mm "top-hat" style DIN rail
-// (IEC/EN 60715).  This should work with either the 7.5 or 15 mm depth.
 module AD_din_rail_profile(depth=7.5) {
     back_x = 0;
     front_x = back_x - depth;
@@ -65,6 +62,9 @@ module AD_din_rail(length=100, depth=7.5, center=false) {
     }
 }
 
+// Modifies almost any widget (provided as children to the invocation of
+// this module) to make it mountable to 35mm "top-hat" style DIN rail
+// (IEC/EN 60715).  This should work with either the 7.5 or 15 mm depth.
 module AD_din_rail_mountable(depth=7.5, nozzle_d=0.4) {
     unit_width = 18;  // per Wikipedia
     
@@ -86,11 +86,6 @@ module AD_din_rail_mountable(depth=7.5, nozzle_d=0.4) {
                         translate([depth, -35/2])
                             AD_din_rail_profile(depth=depth);
         }
-    }
-    
-    module slide_clip_profile() {
-        profile = 
-        polygon(profile);
     }
     
     module slide_clip(grip=10, delta=0) {
@@ -178,33 +173,11 @@ module widget1() {
     }
 }
 
-module widget2() {
-    intersection() {
-        translate([0, 0, 10]) sphere(r=15);
-        translate([0, 0, 15]) cube(2*15, center=true);
-    }
-}
-
 din_depth = 7.5;
-//AD_din_rail_profile(depth=din_depth);
-//AD_din_rail(depth=din_depth, center=true);
-color("green")
-translate([-20, 0, 0])
-AD_din_rail_mountable(depth=din_depth) {
+
+color("green") AD_din_rail_mountable(depth=din_depth) {
     widget1();
 }
-
-if (false) {
-color("yellow") translate([20, 0, 0]) AD_din_rail_mountable(depth=din_depth) { widget2(); }
-
-
-color("yellow") translate([-5.1, -35, 0]) difference() {
-    cube([10.2, 20, 7]);
-    translate([-1, 4.5, 3.8]) cube([10.2+2, 22, 1.4]);
-    translate([-1, 17, 1.8]) cube([10.2+2, 5, 2.2]);
-}
-}
-
 
 if ($preview) {
     translate([0, 0, -(din_depth - 3)]) rotate([0, 90, 0])
