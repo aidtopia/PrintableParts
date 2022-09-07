@@ -41,7 +41,7 @@ module bezel() {
     screen_x =  -6.9;
     screen_y =   4.78;
     device_th = plate_th + 1.4;
-    flex_w   =  90;
+    flex_w   =  89;
     flex_h   =  55;
 
     // The pcb is the Adafruit RA8875 driver board.
@@ -57,10 +57,10 @@ module bezel() {
     vesa_bolt     = vesa_mounts[vesa_index][3];
     vesa_bolt_l   = vesa_mounts[vesa_index][4];
 
-    bolt = "M3";  // for connecting the retainer straps to the frame
+    bolt = "M3";  // for connecting the retaining straps to the frame
     bolt_l = 5;
 
-    bolt_d = boss_diameters(bolt)[0];// max(boss_diameters(bolt)[0], boss_diameters(vesa_bolt)[0]);
+    bolt_d = max(boss_diameters(bolt)[0], boss_diameters(vesa_bolt)[0]);
 
     screw = "M2";  // for connecting the PCB
     screw_l = 10;
@@ -68,8 +68,9 @@ module bezel() {
     screw_offset_y = 36/2;
     
     frame_w = wall_th + plate_w + abs(screen_x) + wall_th;
-    frame_h = wall_th + plate_h + abs(screen_y) + wall_th + 2*bolt_d;
-    frame_th = device_th + wall_th;
+    frame_h =
+        wall_th + bolt_d + plate_h + abs(screen_y) + bolt_d + wall_th;
+    frame_th = wall_th + device_th;
     
     bolt_offset_x = vesa_offset_x;
     bolt_offset_y = (frame_h - bolt_d - wall_th) / 2;
@@ -94,6 +95,12 @@ module bezel() {
                     bolt_hole(bolt, bolt_l, threads="insert");
                 translate([0,  bolt_offset_y, 0])
                     bolt_hole(bolt, bolt_l, threads="insert");
+                translate([0, -vesa_offset_y+bolt_d/2, 0])
+                    linear_extrude(wall_th, center=true, convexity=10)
+                        text("M4", size=3, halign="center", valign="bottom");
+                translate([0,  vesa_offset_y-bolt_d/2, 0])
+                    linear_extrude(wall_th, center=true, convexity=10)
+                        text("M4", size=3, halign="center", valign="top");
             }
         }
     }
@@ -124,12 +131,37 @@ module bezel() {
 //            // carve out notches for the retaining straps.
 //            translate([-bolt_offset_x, 0, frame_th]) strap();
 //            translate([ bolt_offset_x, 0, frame_th]) strap();
-            // and bore mounting holes for the straps.
+            // Bore mounting holes for the straps.
             translate([0, 0, frame_th])
             for (x=[-bolt_offset_x, bolt_offset_x])
                 for (y=[-bolt_offset_y, bolt_offset_y])
                     translate([x, y, 0])
                         bolt_hole(bolt, bolt_l-strap_th, threads="insert");
+            // Add some credits.
+            translate([0, -frame_h/2+18, wall_th])
+                linear_extrude(wall_th, center=true, convexity=10)
+                    text("7\" TFT Display Frame", 5, halign="center", valign="top");
+            translate([0, -frame_h/2+8, wall_th])
+                linear_extrude(wall_th, center=true, convexity=10)
+                    text("Adrian McCarthy 2022", 5, halign="center", valign="top");
+                
+            // Label the bolt holes.
+            translate([-bolt_offset_x-strap_w/2, 0, frame_th]) {
+                translate([0, -bolt_offset_y, 0])
+                    linear_extrude(wall_th, center=true, convexity=10)
+                        text("M3", 3, halign="right", valign="center");
+                translate([0,  bolt_offset_y, 0])
+                    linear_extrude(wall_th, center=true, convexity=10)
+                        text("M3", 3, halign="right", valign="center");
+            }
+            translate([ bolt_offset_x+strap_w/2, 0, frame_th]) {
+                translate([0, -bolt_offset_y, 0])
+                    linear_extrude(wall_th, center=true, convexity=10)
+                        text("M3", 3, halign="left", valign="center");
+                translate([0,  bolt_offset_y, 0])
+                    linear_extrude(wall_th, center=true, convexity=10)
+                        text("M3", 3, halign="left", valign="center");
+            }
         }
     }
     
