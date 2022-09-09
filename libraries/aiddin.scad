@@ -62,31 +62,31 @@ module AD_din_rail(length=100, depth=7.5, center=false) {
     }
 }
 
+// The cutout is the envelope of a rail twisted and slid
+// out of the bottom of the widget.
+module AD_din_cutout(length=250, center=false, depth=7.5, nozzle_d=0.4) {
+    translate([0, 0, center ? 0 : length/2])
+    linear_extrude(length, convexity=4, center=true) {
+        // the twist
+        offset(delta=nozzle_d/2) projection() 
+            translate([-depth, 35/2, 0])
+                linear_extrude(10, twist=-20)
+                    translate([depth, -35/2])
+                        AD_din_rail_profile(depth=depth);
+        // the slide
+        translate([-depth, 35/2, 0])
+            for (i = [0:1:10])
+                rotate([0, 0, 20]) translate([0, -i])
+                    translate([depth, -35/2])
+                        AD_din_rail_profile(depth=depth);
+    }
+}
+
 // Modifies almost any widget (provided as children to the invocation of
 // this module) to make it mountable to 35mm "top-hat" style DIN rail
 // (IEC/EN 60715).  This should work with either the 7.5 or 15 mm depth.
 module AD_din_rail_mountable(depth=7.5, nozzle_d=0.4) {
     unit_width = 18;  // per Wikipedia
-    
-    // The cutout is the envelope of a rail twisted and slid
-    // out of the bottom of the widget.
-    module din_cutout(length=250, center=false) {
-        translate([0, 0, center ? 0 : length/2])
-        linear_extrude(length, convexity=4, center=true) {
-            // the twist
-            offset(delta=nozzle_d/2) projection() 
-                translate([-depth, 35/2, 0])
-                    linear_extrude(10, twist=-20)
-                        translate([depth, -35/2])
-                            AD_din_rail_profile(depth=depth);
-            // the slide
-            translate([-depth, 35/2, 0])
-                for (i = [0:1:10])
-                    rotate([0, 0, 20]) translate([0, -i])
-                        translate([depth, -35/2])
-                            AD_din_rail_profile(depth=depth);
-        }
-    }
     
     module slide_clip(grip=10, delta=0) {
         extent = -(14 + grip);
@@ -150,7 +150,7 @@ module AD_din_rail_mountable(depth=7.5, nozzle_d=0.4) {
         }
         // Cut out notches for the rails to pass through.
         translate([0, 0, -(depth-3)]) rotate([0, 90, 0])
-            din_cutout(length=100, center=true);
+            AD_din_cutout(length=100, center=true, depth=depth,nozzle_d=nozzle_d);
         
         // Make room for the slide clip to slide.
         for (dy = [0:1:4])
