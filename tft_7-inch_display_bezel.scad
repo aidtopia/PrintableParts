@@ -9,11 +9,14 @@
 // using appropriate heat-set inserts (e.g.,
 // McMaster-Carr 94180A351).
 //
-// Considering also adding a DIN rail mounting option as well as
-// a way to mount the Adafruit RA8875 breakout board used to
-// drive the display.
+// Considering also adding a way to mount the Adafruit RA8875
+// breakout board used to drive the display.
 
 use <aidbolt.scad>
+use <aiddin.scad>
+
+// Choose the type of mount you want on the back of the assembly.
+Mount_Type = "vesa"; // ["din", "vesa"]
 
 module END_OF_CUSTOMIZER_PARAMETERS() {}
 
@@ -30,7 +33,7 @@ vesa_mounts = [
     ["VESA400 (MIS-F)", 400, 400, "M8", 15]
 ];
 
-module bezel() {
+module bezel(mount="vesa") {
     wall_th = 2;
     // The datasheet calls the metal plate the LCM outline.
     plate_w  = 164.9 + 0.3;
@@ -78,29 +81,56 @@ module bezel() {
     strap_th = max(wall_th, bolt_l - frame_th + 1);
     strap_w  = bolt_d + wall_th/2;    
 
-    module strap() {
-        difference() {
-            union() {
+    module strap(mount="vesa") {
+        
+        module basic_strap(rounded=true) {
+            difference() {
                 linear_extrude(strap_th) hull() {
-                    translate([0, -bolt_offset_y, 0]) circle(d=strap_w);
-                    translate([0,  bolt_offset_y, 0]) circle(d=strap_w);
+                    for (y = [-bolt_offset_y, bolt_offset_y])
+                        translate([0, y, 0])
+                            if (rounded)
+                                circle(d=strap_w);
+                            else
+                                square(strap_w, center=true);
                 }
-                translate([0, -vesa_offset_y, strap_th])
-                    standoff(vesa_bolt, vesa_bolt_l, threads="insert");
-                translate([0,  vesa_offset_y, strap_th])
-                    standoff(vesa_bolt, vesa_bolt_l, threads="insert");
+                translate([0, 0, strap_th]) {
+                    translate([0, -bolt_offset_y, 0])
+                        bolt_hole(bolt, bolt_l, threads="none");
+                    translate([0,  bolt_offset_y, 0])
+                        bolt_hole(bolt, bolt_l, threads="none");
+                }
             }
-            translate([0, 0, strap_th]) {
-                translate([0, -bolt_offset_y, 0])
-                    bolt_hole(bolt, bolt_l, threads="insert");
-                translate([0,  bolt_offset_y, 0])
-                    bolt_hole(bolt, bolt_l, threads="insert");
-                translate([0, -vesa_offset_y+bolt_d/2, 0])
-                    linear_extrude(wall_th, center=true, convexity=10)
-                        text("M4", size=3, halign="center", valign="bottom");
-                translate([0,  vesa_offset_y-bolt_d/2, 0])
-                    linear_extrude(wall_th, center=true, convexity=10)
-                        text("M4", size=3, halign="center", valign="top");
+        }
+
+        module din_mount() {
+            din_w = wall_th + 35 + wall_th;
+            din_depth = 8;
+            din_lift = 3;
+            din_h = din_lift + 1 + wall_th;
+
+            difference() {
+                translate([0, 0, din_h/2])
+                    cube([strap_w, din_w, din_h], center=true);
+                translate([0, 0, din_lift])
+                rotate([0, -90, 0])
+                translate([din_depth, 0, 0])
+                    AD_din_cutout(length=strap_w+1, center=true);
+            }
+        }
+        
+        if (mount == "vesa") {
+            union() {
+                basic_strap();
+                for (y = [-vesa_offset_y, vesa_offset_y])
+                    translate([0, y, strap_th])
+                        standoff(vesa_bolt, vesa_bolt_l, threads="insert");
+            }
+        } else if (mount == "din") {
+            translate($preview ? [0, 0, 0] : [0, 0, strap_w/2])
+            rotate($preview ? [0, 0, 0] : [0, -90, 0])
+            union() {
+                basic_strap(rounded=false);
+                din_mount();
             }
         }
     }
@@ -127,10 +157,6 @@ module bezel() {
                     cube([flex_w, frame_h/2 + 2, full_th], center=true);
             }
             
-//            // With the frame turned backside-up,
-//            // carve out notches for the retaining straps.
-//            translate([-bolt_offset_x, 0, frame_th]) strap();
-//            translate([ bolt_offset_x, 0, frame_th]) strap();
             // Bore mounting holes for the straps.
             translate([0, 0, frame_th])
             for (x=[-bolt_offset_x, bolt_offset_x])
@@ -140,7 +166,7 @@ module bezel() {
             // Add some credits.
             translate([0, -frame_h/2+18, wall_th])
                 linear_extrude(wall_th, center=true, convexity=10)
-                    text("7\" TFT Display Frame", 5, halign="center", valign="top");
+                    text("7\" TFT Display Bezel", 5, halign="center", valign="top");
             translate([0, -frame_h/2+8, wall_th])
                 linear_extrude(wall_th, center=true, convexity=10)
                     text("Adrian McCarthy 2022", 5, halign="center", valign="top");
@@ -149,18 +175,18 @@ module bezel() {
             translate([-bolt_offset_x-strap_w/2, 0, frame_th]) {
                 translate([0, -bolt_offset_y, 0])
                     linear_extrude(wall_th, center=true, convexity=10)
-                        text("M3", 3, halign="right", valign="center");
+                        text("M3", 4, halign="right", valign="center");
                 translate([0,  bolt_offset_y, 0])
                     linear_extrude(wall_th, center=true, convexity=10)
-                        text("M3", 3, halign="right", valign="center");
+                        text("M3", 4, halign="right", valign="center");
             }
             translate([ bolt_offset_x+strap_w/2, 0, frame_th]) {
                 translate([0, -bolt_offset_y, 0])
                     linear_extrude(wall_th, center=true, convexity=10)
-                        text("M3", 3, halign="left", valign="center");
+                        text("M3", 4, halign="left", valign="center");
                 translate([0,  bolt_offset_y, 0])
                     linear_extrude(wall_th, center=true, convexity=10)
-                        text("M3", 3, halign="left", valign="center");
+                        text("M3", 4, halign="left", valign="center");
             }
         }
     }
@@ -177,34 +203,25 @@ module bezel() {
                     bolt_hole(screw, screw_l, threads="self-tapping");
     }
 
-    module vesa() {
-        for (x=[-vesa_offset_x, vesa_offset_x])
-            for (y=[-vesa_offset_y, vesa_offset_y])
-                translate([x, y, 0]) standoff(vesa_bolt, vesa_bolt_l);
-    }
-
     frame();
 
-    x = $preview ? bolt_offset_x : strap_w;
-    z = $preview ? frame_th : 0;
-    rot = $preview ? 0 : 90;
-
-    rotate([0, 0, rot]) translate([0, 0, z]) {
-        union() {
-            translate([-x, 0, 0]) strap();
-            translate([ x, 0, 0]) strap();
-        }
-        if (false && $preview) {
-            translate([0, 0, strap_th]) {
-                translate([pcb_offset_x, pcb_offset_y, pcb_th/2]) {
-                    difference() {
-                        pcb();
-                        translate([0, 0, pcb_th/2]) pcb_holes();
-                    }
+    translate($preview ? [0, 0, frame_th] : [0, 0, 0])
+    rotate($preview ? [0, 0, 0] : [0, 0, 90])
+    union() {
+        x = $preview ? bolt_offset_x : (strap_w + 1)/2;
+        translate([-x, 0, 0]) strap(mount=mount);
+        translate([ x, 0, 0]) strap(mount=mount);
+    }
+    if (false && $preview) {
+        translate([0, 0, strap_th]) {
+            translate([pcb_offset_x, pcb_offset_y, pcb_th/2]) {
+                difference() {
+                    pcb();
+                    translate([0, 0, pcb_th/2]) pcb_holes();
                 }
             }
         }
     }
 }
 
-bezel();
+bezel(mount=Mount_Type);
