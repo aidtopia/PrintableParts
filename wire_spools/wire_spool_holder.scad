@@ -218,13 +218,11 @@ module spool_holder(wire_d=3, w=22, od=55, id=25.5, wall_th=3, din_mount=false, 
         }
         
         // For the snap tabs that grab the "lower" rail.
-        offset = tab_w;
-        translate([-offset, 0, 0])
-        translate([-(tab_w + clearance)/2, -4, -clearance/2])
-            cube([tab_w+clearance, 4+clearance, base_th+clearance]);
-        translate([ offset, 0, 0])
-        translate([-(tab_w + clearance)/2, -4, -clearance/2])
-            cube([tab_w+clearance, 4+clearance, base_th+clearance]);
+        for (offset = [tab_w, -tab_w]) {
+            translate([offset, 0, 0])
+            translate([-(tab_w + clearance)/2, -4, -clearance/2])
+                cube([tab_w+clearance, 4+clearance, base_th+clearance]);
+        }
     }
     
     module din_snap_tabs(w=7) {
@@ -240,15 +238,12 @@ module spool_holder(wire_d=3, w=22, od=55, id=25.5, wall_th=3, din_mount=false, 
             [-thick, guide_y - thick*cos(guide_angle)],
             [-thin, din_notch_depth, 10]
         ], $fs=nozzle_d/2);
-        offset = w;
-        translate([-offset, 0, 0])
-        rotate([0, 0, 90]) rotate([90, 0, 0])
-            linear_extrude(w, center=true, convexity=10)
-                polygon(points);
-        translate([ offset, 0, 0])
-        rotate([0, 0, 90]) rotate([90, 0, 0])
-            linear_extrude(w, center=true, convexity=10)
-                polygon(points);
+        for (offset = [w, -w]) {
+            translate([-offset, 0, 0])
+            rotate([0, 0, 90]) rotate([90, 0, 0])
+                linear_extrude(w, center=true, convexity=10)
+                    polygon(points);
+        }
     }
     
     module chassis() {
