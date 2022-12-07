@@ -3,15 +3,10 @@
 //
 // 2022-08-24 Adrian McCarthy
 
-
-module coin_envelope_box() {
-    envelope_w = 57;
-    envelope_h = 89;
-    wall_th = 1.2;
-    clearance = 1;
+module envelope_box(envelope_w, envelope_h, wall_th=1.2, clearance=1) {
     box_w = wall_th + envelope_w + clearance + wall_th;
     box_h = wall_th + 0.4*envelope_h;
-    box_d = 150;  // fits Sterilite 6 quart shoebox
+    box_d = 150;  // fits Sterilite 6-quart shoebox
     multmatrix([[1, 0, 0, 0],
                 [0, 1, 0.2, 0],
                 [0, 0, 1, 0]]) {
@@ -34,4 +29,42 @@ module coin_envelope_box() {
     }
 }
 
+module divider(envelope_w, envelope_h, label_h=25.4/2, th=1.2, nozzle_d=0.4) {
+    r = 3;
+    dx = envelope_w/2 - r;
+    dy = envelope_h/2 - r;
+    extra = label_h + 2*r;
+    $fs = nozzle_d/2;
+    difference() {
+        linear_extrude(th) {
+            difference() {
+                hull() {
+                    translate([-dx, -dy]) circle(r=r);
+                    translate([ dx, -dy]) circle(r=r);
+                    translate([-dx,  dy + extra]) circle(r=r);
+                    translate([ dx,  dy + extra]) circle(r=r);
+                }
+                hull() {
+                    translate([        0,  dy - 2*r]) circle(r=r);
+                    translate([-dx + 2*r,     extra]) circle(r=r);
+                    translate([ dx - 2*r,    -extra]) circle(r=r);
+                    translate([        0, -dy + 2*r]) circle(r=r);
+                }
+            }
+        }
+        translate([-dx, dy+2*r, max(th/2, th-nozzle_d)]) {
+            cube([2*dx, label_h, th]);
+        }
+    }
+}
+
+module coin_envelope_box() {
+    envelope_box(57, 89, wall_th=1.2, clearance=1);
+}
+
+module coin_envelope_divider(nozzle_d=0.4) {
+    divider(57, 89, nozzle_d=nozzle_d);
+}
+
 coin_envelope_box();
+//coin_envelope_divider();
