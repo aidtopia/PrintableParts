@@ -16,6 +16,10 @@ module clapper_slate(w=60, h=0, th=25.4/4, use_608_bearing=false, nozzle_d=0.4) 
     stick_h = hinge_od;
     stick_th = max(21.65, 3*bearing_w);
 
+    tab_l = 0.75*hinge_od;
+    tab_h = 0.75*stick_h;
+    tab_th = bearing_w;
+
     boss0_x = 0;
     boss1_x = stick_l - hinge_od;
     boss_y = -3/4*stick_h;
@@ -52,6 +56,10 @@ module clapper_slate(w=60, h=0, th=25.4/4, use_608_bearing=false, nozzle_d=0.4) 
         echo(str("Bolt should be M3P0.5 x ", stick_th - M3_head_h, " mm"));
     }
 
+    module bearing_bolt_hole() {
+         translate([hinge_od, 0, 0]) rotate([0, 0, 90]) bolt_hole();
+    }
+
     module hinge_bolt_hole() {
          bolt_hole();
     }
@@ -75,25 +83,62 @@ module clapper_slate(w=60, h=0, th=25.4/4, use_608_bearing=false, nozzle_d=0.4) 
             }
         }
     }
+    
+    module bearing_tab(clearance=0) {
+        dx = (tab_th + clearance)/2;
+        dy = dx;
+        right = 0 + dx;
+        left = -right;
+        top = (tab_h + clearance)/2;
+        bottom = -top;
+        translate([hinge_od/2-0.1, 0]) {
+            rotate([0, 90, 0]) {
+                linear_extrude(tab_l+0.1+clearance, convexity=10) {
+                    polygon([
+                        [0, top],
+                        [right, top-dy],
+                        [right, bottom+dy],
+                        [0, bottom],
+                        [left, bottom+dy],
+                        [left, top-dy],
+                    ]);
+                }
+            }
+        }
+    }
 
-    module top_stick() {
+    module bearing_block() {
+        // If we're using a bearing, we want a tight fit.
+        // Otherwise, we increase the clearance to allow rotation.
+        clearance = use_608_bearing ? 0 : nozzle_d;
         linear_extrude(bearing_w, convexity=10, center=true) {
             difference() {
                 hull() {
                     circle(d=hinge_od-nozzle_d);
-                    translate([hinge_od/2, 0, 0])
-                        square(stick_h, center=true);
+                    translate([0, -hinge_od/2])
+                        square([hinge_od/2+nozzle_d, stick_h]);
                 }
-                circle(d=bearing_od);  // intentionally tight fit
+                circle(d=bearing_od + clearance);
             }
         }
-        linear_extrude(stick_th, center=true) {
-            hull() {
-                translate([hinge_od+nozzle_d, 0, 0])
-                    square(stick_h, center=true);
-                translate([stick_l-stick_h, 0, 0])
-                    square(stick_h, center=true);
+        difference() {
+            bearing_tab();
+            bearing_bolt_hole();
+        }
+    }
+
+    module top_stick() {
+        difference() {
+            linear_extrude(stick_th, center=true) {
+                hull() {
+                    translate([hinge_od+nozzle_d, 0])
+                        square(stick_h, center=true);
+                    translate([stick_l-stick_h, 0])
+                        square(stick_h, center=true);
+                }
             }
+            bearing_tab(clearance=nozzle_d);
+            bearing_bolt_hole();
         }
     }
     
@@ -105,7 +150,7 @@ module clapper_slate(w=60, h=0, th=25.4/4, use_608_bearing=false, nozzle_d=0.4) 
                 translate([0, -stick_h, 0]) {
                     hull() {
                         square(stick_h, center=true);
-                        translate([stick_l-stick_h, 0, 0])
+                        translate([stick_l-stick_h, 0])
                             square(stick_h, center=true);
                     }
                 }
@@ -122,7 +167,8 @@ module clapper_slate(w=60, h=0, th=25.4/4, use_608_bearing=false, nozzle_d=0.4) 
             linear_extrude((stick_th - bearing_w - nozzle_d)/2, center=false) {
                 hull() {
                     circle(d=hinge_od);
-                    translate([0, -stick_h, 0]) square(stick_h, center=true);
+                    translate([0, -stick_h])
+                        square(stick_h, center=true);
                 }
             }
         }
@@ -162,14 +208,18 @@ module clapper_slate(w=60, h=0, th=25.4/4, use_608_bearing=false, nozzle_d=0.4) 
         // Parts are shown in their design orientation, which
         // matches how they will go together.
         if (use_608_bearing) color("silver") bearing_608();
-        color("orange")     rotate([0, 0, 15]) top_stick();
-        color("DodgerBlue") front_of_lower_stick();
-        color("green")      back_of_lower_stick();
+        rotate([0, 0, 15])  {
+            color("yellow")     bearing_block();
+            color("orange")     top_stick();
+        }
+        color("DodgerBlue")     front_of_lower_stick();
+        color("LimeGreen")      back_of_lower_stick();
         #translate([-hinge_od, -stick_h/2, 0]) bolt_hole();
     } else {
         // Orient parts for printing.
         translate([0, 0, stick_h/2]) rotate([90, 0, 0])
             top_stick();
+        translate([-hinge_od, 0, bearing_w/2]) bearing_block();
         translate([0, -(3/2*stick_h+stick_th/2+5), stick_th/2])
             rotate([180, 0, 0])
                 front_of_lower_stick();
