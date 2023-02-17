@@ -1,7 +1,6 @@
-// Handhold case for "30mm" arcade button from Adafruit
+// Control Panel for simple prop controller
 // Adrian McCarthy 2023-02-12
 //
-// https://www.adafruit.com/product/3489
 
 module thread(h, tap_d, pitch, tooth_h, nozzle_d=0.4) {
     r = (tap_d + nozzle_d) / 2;
@@ -28,24 +27,6 @@ module thread(h, tap_d, pitch, tooth_h, nozzle_d=0.4) {
     for (theta = [-180 : dtheta : h*360/pitch + 180]) {
         rotate([0, 0, theta]) translate([0, 0, pitch*theta/360])
             wedge();
-    }
-}
-
-module arcade_button_case(h=10, od=33.3, nozzle_d=0.4) {
-    // Spec says it's M28x2
-    // https://www.geocities.ws/qxb4tech/mthreadfine1_28.html
-    tap_d = 26;
-    pitch = 2;
-    tooth_h = 1.227;
-    
-    difference() {
-        cylinder(h=h, d=od);
-        translate([0, 0, -1]) cylinder(h=h+2, d=tap_d + nozzle_d);
-        intersection() {
-            cylinder(h=h-3, d=od);
-            thread(h=h, tap_d=tap_d, pitch=pitch, tooth_h=tooth_h, nozzle_d=nozzle_d);
-        }
-        translate([0, 0, h-3]) cylinder(h=3+1, d=28);
     }
 }
 
@@ -82,6 +63,7 @@ module prop_control_panel(panel_th=2, print_orientation=false, nozzle_d=0.4) {
     
     module button_cutout() {
         // Spec says it's M28x2
+        // https://www.adafruit.com/product/3489
         // https://www.geocities.ws/qxb4tech/mthreadfine1_28.html
         tap_d = 26;
         pitch = 2;
