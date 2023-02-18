@@ -1,8 +1,35 @@
 // Control Panel for simple prop controller
 // Adrian McCarthy 2023-02-12
 
-module thread(h, tap_d, pitch, tooth_h, nozzle_d=0.4) {
-    r = (tap_d + nozzle_d) / 2;
+// This creates a tap for cutting an internal thread.  (A nut has
+// an internal thread.  A bolt has an external thread.)
+// https://en.wikipedia.org/wiki/ISO_metric_screw_thread
+module tap(h, d, pitch, nozzle_d=0.4) {
+    d_major = d;  // e.g., an M3 screw has a major diameter of 3.
+    thread_h = pitch / (2*tan(30));
+    d_minor = d_major - 2 * (5/8) * thread_h;
+    d_max = d_major + thread_h/8;
+    
+    echo(str("M", d, "x", pitch, ": thread_h=", thread_h, "; d_major=", d_major, "; d_minor=", d_minor));
+
+    x_major = 0;
+    x_deep  = x_major + thread_h/8;
+    x_minor = x_major - 5/8*thread_h;
+    x_clear = x_minor - thread_h/4;
+    y_major = pitch/16;
+    y_minor = 3/8 * pitch;
+    
+    wedge_points = [
+        [x_deep, 0],
+        [x_minor, y_minor],
+        [x_minor, pitch/2],
+        [x_clear, pitch/2],
+        [x_clear, -pitch/2],
+        [x_minor, -pitch/2],
+        [x_minor, -y_minor]
+    ];
+
+    r = d_major / 2;
 
     facets =
         ($fn > 0) ? max(3, $fn)
@@ -11,21 +38,23 @@ module thread(h, tap_d, pitch, tooth_h, nozzle_d=0.4) {
     echo(str("dtheta for threads = ", dtheta));
 
     module wedge() {
-        rotate([1.5, 0, 0]) rotate([0, 0, -(dtheta+0.1)/2])
-            rotate_extrude(angle=dtheta+0.1, convexity=10)
-                translate([r, 0])
-                    polygon([
-                        [tooth_h, 0],
-                        [0, -pitch/2],
-                        [-0.1, -pitch/2],
-                        [-0.1, pitch/2],
-                        [0, pitch/2]
-                    ]);
+        rotate([1.35, 0, 0])
+            rotate([0, 0, -(dtheta+0.1)/2])
+                rotate_extrude(angle=dtheta+0.1, convexity=10)
+                    translate([r, 0])
+                        polygon(wedge_points);
     }
 
-    for (theta = [-180 : dtheta : h*360/pitch + 180]) {
-        rotate([0, 0, theta]) translate([0, 0, pitch*theta/360])
-            wedge();
+    intersection() {
+        union() {
+            for (theta = [-180 : dtheta : h*360/pitch + 180]) {
+                rotate([0, 0, theta]) translate([0, 0, pitch*theta/360])
+                    wedge();
+            }
+            
+            cylinder(h=h, d=d_minor);
+        }
+        cylinder(h=h, d=d_max + nozzle_d);
     }
 }
 
@@ -45,21 +74,33 @@ module arcadebtn_support(panel_th, nozzle_d=0.4) {
 module arcadebtn_cutout(panel_th, nozzle_d=0.4) {
     button_dia   = arcadebtn_size().x;
     button_depth = arcadebtn_size().z;
-    // Thread size is M28-2
-    // https://www.geocities.ws/qxb4tech/mthreadfine1_28.html
-    tap_d = 26;
-    pitch = 2;
-    tooth_h = 1.227;
 
     translate([0, 0, panel_th/2 - button_depth - 0.1]) {
-        cylinder(h=button_depth+0.2, d=tap_d + nozzle_d);
-        intersection() {
-            cylinder(h=button_depth-3, d=button_dia);
-            thread(h=button_depth-3, tap_d=tap_d, pitch=pitch,
-                   tooth_h=tooth_h, nozzle_d=nozzle_d);
-        }
+        // threading stops 3 mm short of the bezel
+        tap(h=button_depth-3+0.2, d=28, pitch=2, nozzle_d=nozzle_d);
         translate([0, 0, button_depth-3+0.1])
             cylinder(h=3+0.1, d=28);
+    }
+}
+
+
+// Metal Button
+// https://www.chinadaier.com/gq12h-10m-momentary-push-button-switch/
+//
+function metalbtn_size(panel_th=0) = [ 13.9, 13.9, 4 ];
+
+module metalbtn_support(panel_th, nozzle_d=0.4) {
+    support_dia  = metalbtn_size().x + 2;
+    button_depth = metalbtn_size().z;
+    translate([0, 0, panel_th/2 - button_depth])
+        cylinder(h=button_depth, d=support_dia);
+}
+
+module metalbtn_cutout(panel_th, nozzle_d=0.4) {
+    button_dia   = metalbtn_size().x;
+    button_depth = metalbtn_size().z;
+    translate([0, 0, panel_th/2 - button_depth - 0.1]) {
+        tap(h=button_depth + 0.2, d=12, pitch=1, nozzle_d=nozzle_d);
     }
 }
 
@@ -182,16 +223,12 @@ module prop_control_panel(
     }
     
     relaymod_pos = [panel_w/2, panel_h-relaymod_size().y/2 - 10, 0];
-    rocker_pos =
-        [relaymod_pos.x - relaymod_size().x/2 + rocker_size().x/2,
-         relaymod_pos.y - relaymod_size().y/2 - rocker_size().y/2 - 8];
-    
     recessed_pos =
         [relaymod_pos.x + relaymod_size().x/2 - recessed_rocker_size(panel_th).x/2,
-         rocker_pos.y];
-
-    terminal_pos =
-        [panel_w/2, relaymod_pos.y - relaymod_size().y/2 - 25];
+         relaymod_pos.y - relaymod_size().y/2 - rocker_size().y/2 - 8];
+    button_pos =
+        [relaymod_pos.x - relaymod_size().x/2 + metalbtn_size().x/2,
+         recessed_pos.y];
 
     orient() {
         difference() {
@@ -199,15 +236,15 @@ module prop_control_panel(
                 panel();
                 translate(relaymod_pos)
                     relaymod_bracing(panel_th, nozzle_d);
+                translate(button_pos)
+                    metalbtn_support(panel_th, nozzle_d);
                 translate(recessed_pos)
                     recessed_rocker_support(panel_th, nozzle_d);
-                translate(terminal_pos)
-                    terminal_block_support(4, panel_th, nozzle_d);
             }
             translate(relaymod_pos)
                 relaymod_cutout(panel_th, nozzle_d);
-            translate(rocker_pos)
-                rocker_cutout(panel_th, nozzle_d);
+            translate(button_pos)
+                metalbtn_cutout(panel_th, nozzle_d);
             translate(recessed_pos)
                 recessed_rocker_cutout(panel_th, nozzle_d);
         }
