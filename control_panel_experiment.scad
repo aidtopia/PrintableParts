@@ -5,7 +5,11 @@
 // an internal thread.  A bolt has an external thread.)
 // https://en.wikipedia.org/wiki/ISO_metric_screw_thread
 module tap(h, d, pitch, nozzle_d=0.4) {
-    d_major = d;  // e.g., an M3 screw has a major diameter of 3.
+    // An M3 screw has a major diameter of 3 mm.  We're going to
+    // nudge it up with the nozzle diameter to compensate for
+    // the problem of printing accurate holes and to generally
+    // provide some clearance.
+    d_major = d + nozzle_d;
     thread_h = pitch / (2*tan(30));
     d_minor = d_major - 2 * (5/8) * thread_h;
     d_max = d_major + thread_h/8;
@@ -86,7 +90,9 @@ module arcadebtn_cutout(panel_th, nozzle_d=0.4) {
 
 // Metal Button
 // https://www.chinadaier.com/gq12h-10m-momentary-push-button-switch/
-//
+// Spec says M12 without specifying pitch.  Per an answer on an
+// Amazon page, the pitch is 1.0 mm, which is "extra fine" (and hard to
+// find).  Under the microscope, it looks like 0.75.
 function metalbtn_size(panel_th=0) = [ 13.9, 13.9, 4 ];
 
 module metalbtn_support(panel_th, nozzle_d=0.4) {
@@ -100,7 +106,7 @@ module metalbtn_cutout(panel_th, nozzle_d=0.4) {
     button_dia   = metalbtn_size().x;
     button_depth = metalbtn_size().z;
     translate([0, 0, panel_th/2 - button_depth - 0.1]) {
-        tap(h=button_depth + 0.2, d=12, pitch=1, nozzle_d=nozzle_d);
+        tap(h=button_depth + 0.2, d=12, pitch=0.75, nozzle_d=nozzle_d);
     }
 }
 
