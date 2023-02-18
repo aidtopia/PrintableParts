@@ -90,5 +90,6 @@ module minimal_cap(nozzle_d=0.4) {
 }
 
 //measure();
-full_coverage_cap();
-translate([25, 0, 0]) minimal_cap();
+//full_coverage_cap();
+//translate([25, 0, 0])
+    minimal_cap();
