@@ -85,7 +85,6 @@ function AG_define_ring_gear(
     let (
         m = AG_as_module(iso_module, circular_pitch, diametral_pitch,
                          AG_module(mate)),
-        c = is_undef(clearance) ? AG_clearance(mate) : clearance,
         backing =
             is_undef(pitch_to_rim) ?
                 AG_backing(mate) == 0 ?
@@ -162,8 +161,9 @@ function AG_define_universal(
          c = is_undef(clearance) ? AG_clearance(mate) : clearance,
          th = is_undef(thickness) ? AG_thickness(mate) : thickness,
          beta =
-            is_undef(helix_angle) ? -AG_helix_angle(mate) :
-                                    helix_angle,
+            is_undef(helix_angle) ?
+                let (flip = (type == "AG ring") == (AG_type(mate) == "AG ring") ? -1 : 1)
+                flip * AG_helix_angle(mate) : helix_angle,
          dblhelix =
             is_undef(herringbone) ? AG_herringbone(mate) :
                                     herringbone
