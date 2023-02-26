@@ -1,3 +1,14 @@
+// Spider Dropper
+// Adrian McCarthy 2023-02-25
+
+// The assembly is mounted overhead.  A string secured to the spool
+// holds a toy spider.  A slow motor turns the big gear, which winds
+// the spool, raising the spider.  When the toothless section of the
+// drive gear comes around, the spool becomes free wheeling, and the
+// weight of the spider will cause the spool to unwind rapidly (the
+// drop).  When the teeth again engage, the spider will climb back
+// up.
+
 use <aidgear.scad>
 
 module spider_dropper(drop_distance=24*25.4, nozzle_d=0.4) {
