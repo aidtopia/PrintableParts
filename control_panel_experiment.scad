@@ -157,6 +157,30 @@ module metalbtn_cutout(panel_th, nozzle_d=0.4) {
 }
 
 
+// High-Amp Button
+// https://www.amazon.com/gp/product/B08QV4CWYW
+// https://www.chinadaier.com/19mm-push-button-switch/
+// M19x1
+function hiampbtn_size(panel_th=0) = [ 21.8, 21.8, 5 ];
+
+module hiampbtn_support(panel_th, nozzle_d=0.4) {
+    support_dia  = hiampbtn_size().x;
+    button_depth = hiampbtn_size().z;
+    translate([0, 0, panel_th/2 - button_depth])
+        cylinder(h=button_depth, d=support_dia);
+}
+
+module hiampbtn_cutout(panel_th, nozzle_d=0.4) {
+    button_dia   = hiampbtn_size().x;
+    button_depth = hiampbtn_size().z;
+    translate([0, 0, panel_th/2 - button_depth - 0.1]) {
+        tap(h=button_depth + 0.2, d=19, pitch=1, nozzle_d=nozzle_d);
+        translate([0, 0, button_depth-1])
+            cylinder(h=1+panel_th/2+0.1, d=19);
+    }
+}
+
+
 function fuse_holder_size(panel_th=0)
     = [25+2*panel_th, 12.5+2*panel_th, 10];
 
@@ -326,19 +350,4 @@ module prop_control_panel(
     }
 }
 
-module handheld_button(panel_th=2,
-    print_orientation=false,
-    nozzle_d=0.4
-) {
-    difference() {
-        union() {
-            cylinder(h=panel_th, d=arcadebtn_size().x, $fs=nozzle_d/2);
-            arcadebtn_support(panel_th, nozzle_d);
-        }
-        arcadebtn_cutout(panel_th, nozzle_d);
-    }
-}
-
-//prop_control_panel(panel_th=1.8, print_orientation=!$preview);
-handheld_button();
-
+prop_control_panel(panel_th=1.8, print_orientation=!$preview);

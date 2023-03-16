@@ -4,6 +4,9 @@
 // Useful for game-show signaling buttons, Halloween prop triggers,
 // etc.
 
+// Diameter of the opening at the small end of the case. (mm)
+Cable_Diameter = 6; // [3:0.2:10]
+
 function inch(x) = 25.4*x;
 
 // This creates a tap for cutting an internal thread.  (A nut has
@@ -47,7 +50,11 @@ module tap(h, d, pitch, nozzle_d=0.4) {
     echo(str("dtheta for threads = ", dtheta));
 
     module wedge() {
-        rotate([1.35, 0, 0])
+        // TODO:  Figure out how to compute `magic_rotation` angle
+        // from the thread pitch and wedge size.  This tilts the
+        // wedges so they meet align well.
+        magic_rotation = 1.35;
+        rotate([magic_rotation, 0, 0])
             rotate([0, 0, -(dtheta+0.1)/2])
                 rotate_extrude(angle=dtheta+0.1, convexity=10)
                     translate([r, 0])
@@ -120,10 +127,9 @@ module hiampbtn_cutout(panel_th, nozzle_d=0.4) {
 //
 // The button body screws into the top piece (flange to flange).
 // The rubber ring that comes with the button can be squeezed
-// between the flanges for a bit of a seal.  You probably won't
-// need the jam nut that comes with the button, but there's
-// harm in screwing that onto the button and cinching it up
-// against the top piece.
+// between the flanges for a bit of a seal.  You probably should
+// not need the jam nut that comes with the button.  In fact it's
+// likely too wide to fit inside the case.
 //
 // Feed the wires up through the small end of the case and make
 // the appropriate connections.  There's enough room inside the
@@ -141,9 +147,10 @@ module handheld_button(panel_th=2, small_id=6, nozzle_d=0.4) {
     straight_h = 25;
     taper_h = 50;
     total_h = straight_h + taper_h;
+    small_od = small_id + 2*panel_th;
+    brim_d = min(case_od, 2*small_od);
     
     module case() {
-        small_od = small_id + 2*panel_th;
         inset_d = hiampbtn_size().x;
         inset_h = hiampbtn_size().z - panel_th;
         straight_h = 25;
@@ -170,7 +177,7 @@ module handheld_button(panel_th=2, small_id=6, nozzle_d=0.4) {
         // in the design.
         linear_extrude(nozzle_d/2) {
             difference() {
-                circle(d=case_od);
+                circle(d=brim_d);
                 circle(d=small_id);
             }
         }
@@ -192,10 +199,9 @@ module handheld_button(panel_th=2, small_id=6, nozzle_d=0.4) {
         }
     }
     
-    translate([0, case_od + 1, 0]) case();
+    offset = (case_od + brim_d)/2 + 1; 
+    translate([0, offset, 0]) case();
     top();
 }
 
-// I'm using a slightly larger small_id for my Halloween prop trigger
-// to fit two pairs of wires.
-handheld_button(small_id=inch(5/16), $fn=$preview ? 30 : 60);
+handheld_button(small_id=Cable_Diameter, $fn=$preview ? 30 : 60);
