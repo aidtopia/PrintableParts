@@ -1,4 +1,4 @@
-// All kinds of bolt and machine screw holes                                   |
+// All kinds of bolt and machine screw holes
 // Adrian McCarthy 2021
 
 use <aidutil.scad>;
@@ -114,8 +114,13 @@ machine_screws = [
             ["pan",             8.0,        3.1,        0.0         ]],
         [ // nut                nut_w       nut_h           sides
             ["hex",             7.0,        3.2,            6       ],
-            ["insert",          thou(221),  4.7,            1       ]]]
-];
+            ["insert",          thou(221),  4.7,            1       ]]],
+    ["M5",      5.5,        5.3,        4.2,        0.80,
+        [ // head shape         head_d      head_h      sink_h
+            ["flat",            9.2,        0.0,        2.50        ],
+            ["pan",            10.0,        4.0,        0.0         ]],
+        [ // nut                nut_w       nut_h           sides
+            ["hex",             8.0,        4,0,            6       ]]]];
 
 function find_bolt_params(size, table) =
     let (candidate=find_params(size, table=table))
