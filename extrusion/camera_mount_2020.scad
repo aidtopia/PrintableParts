@@ -1,6 +1,16 @@
 // Overhead camera mount for 2020 extrusion
 // Adrian McCarthy 2023-03-26
 
+// Show the quick release parts assembled.
+Assembled = false;
+
+// Style for the index pin.  "spring" is recommended for PETG but not PLA. "fixed" and "reinforced" restricts the plate to video cameras that have an opening for an index pin.
+Index_Pin = "spring"; // ["none", "spring", "fixed", "reinforced"]
+
+// Diameter of the nozzle you'll use to print.
+Nozzle_Diameter = 0.4; // [0.1:0.05:1.0]
+
+
 function inch(x) = 25.4 * x;
 
 module rounded_rect(w, l, r=1, center=false, nozzle_d=0.4) {
@@ -82,8 +92,8 @@ plate_rim_th = 1;
 
 // The camera bolt is 1/4"-20, partially threaded.
 bolt_close_d = inch(0.266);
-retainer_id  = inch(0.220);
-retainer_od  = inch(0.400);
+retainer_id  = inch(0.188);
+retainer_od  = inch(0.350);
 retainer_th  = 0.8;
 retainer_open_angle = 75;
 
@@ -102,7 +112,10 @@ cover_w  = plate_w - 2*plate_rim_th;
 cover_l  = plate_l - 2*plate_rim_th;
 cover_h  = plate_rim_h;
 
-blob_d = 4;
+blob_d     = 4;
+blob_delta = 8;
+blob_dx    = screws_dx + 1;
+blob_dy    = screws_dy + 5;
 
 slope_profile = [
     [ slope_w1/2, 0],
@@ -120,7 +133,7 @@ mount_l  = mount_th + plate_l + slope_l;
 mount_h  = mount_backing + base0_h + base1_h + plate_h - plate_rim_h;
 mount_screws_dx = (hollow_w - m5_head_d)/2;
 
-module velbon_qb_6rl(assembled=$preview, nozzle_d=0.4) {
+module velbon_qb_6rl(assembled=$preview, index_pin="spring", nozzle_d=0.4) {
     module M3_pilot_hole() {
         cylinder(screws_h+0.1, d=m3_pilot_d+nozzle_d, $fs=nozzle_d/2);
     }
@@ -141,10 +154,14 @@ module velbon_qb_6rl(assembled=$preview, nozzle_d=0.4) {
     // The blobs help align the cover on the plate and indicate good
     // places to apply adhesive.
     module blobs() {
-        translate([0, -screws_dy, 0]) children();
-        translate([0,  screws_dy, 0]) children();
-        translate([-screws_dx, 0, 0]) children();
-        translate([ screws_dx, 0, 0]) children();
+        translate([-blob_delta, -blob_dy, 0]) children();
+        translate([ blob_delta, -blob_dy, 0]) children();
+        translate([-blob_delta,  blob_dy, 0]) children();
+        translate([ blob_delta,  blob_dy, 0]) children();
+        translate([-blob_dx, -blob_delta, 0]) children();
+        translate([-blob_dx,  blob_delta, 0]) children();
+        translate([ blob_dx, -blob_delta, 0]) children();
+        translate([ blob_dx,  blob_delta, 0]) children();
     }
 
     module base() {
@@ -172,8 +189,14 @@ module velbon_qb_6rl(assembled=$preview, nozzle_d=0.4) {
                 difference() {
                     rounded_rect(plate_w, plate_l, r=4, center=true);
                     circle(d=bolt_close_d, $fs=nozzle_d/2);
-                    translate([0, index_dy])
-                        circle(d=index_spring_d, $fs=nozzle_d/2);
+                    translate([0, index_dy]) {
+                        if (index_pin == "spring") {
+                            circle(d=index_spring_d, $fs=nozzle_d/2);
+                        }
+                        if (index_pin == "reinforced") {
+                            circle(d=1.6+nozzle_d, $fs=nozzle_d/2);
+                        }
+                    }
                 }
             }
             translate([0, 0, face_z]) {
@@ -197,17 +220,31 @@ module velbon_qb_6rl(assembled=$preview, nozzle_d=0.4) {
             }
         }
         
-        // springy index pin
+        ch = index_h-index_d/2;
         translate([0, index_dy, 0], $fs=nozzle_d/2) {
-            linear_extrude(index_spring_h) {
-                dtheta = 360 / index_spring_arms;
-                for (theta = [dtheta:dtheta:360]) {
-                    rotate([0, 0, theta])
-                        spiral_arm(index_d, index_spring_d, th=1.5*nozzle_d);
+            if (index_pin == "spring") {
+                linear_extrude(index_spring_h) {
+                    dtheta = 360 / index_spring_arms;
+                    for (theta = [dtheta:dtheta:360]) {
+                        rotate([0, 0, theta])
+                            spiral_arm(index_d, index_spring_d, th=1.5*nozzle_d);
+                    }
+                }
+                cylinder(h=ch, d=index_d);
+                translate([0, 0, ch/2]) sphere(d=index_d);
+            }
+            if (index_pin != "none") {
+                difference() {
+                    union() {
+                        cylinder(h=ch, d=index_d);
+                        translate([0, 0, ch]) sphere(d=index_d);
+                    }
+                    if (index_pin == "reinforced") {
+                        translate([0, 0, -0.1])
+                            cylinder(h=ch+0.1, d=1.6+nozzle_d, $fs=nozzle_d/2);
+                    }
                 }
             }
-            cylinder(h=index_h-index_d/2, d=index_d);
-            translate([0, 0, index_h-index_d/2]) sphere(d=index_d);
         }
     }
     
@@ -217,8 +254,10 @@ module velbon_qb_6rl(assembled=$preview, nozzle_d=0.4) {
                 rounded_rect(cover_w-nozzle_d, cover_l-nozzle_d, r=4,
                              center=true);
                 circle(d=retainer_od+nozzle_d, $fs=nozzle_d/2);
-                translate([0, index_dy])
-                    circle(d=index_d+nozzle_d, $fs=nozzle_d/2);
+                if (index_pin != "none") {
+                    translate([0, index_dy])
+                        circle(d=index_d+nozzle_d, $fs=nozzle_d/2);
+                }
             }
         }
         intersection() {
@@ -269,9 +308,14 @@ module velbon_qb_6rl(assembled=$preview, nozzle_d=0.4) {
 }
 
 module velbon_mount(nozzle_d=0.4) {
+    // The envelope for the lowest part of the base creates an overhang.
+    // Though the printer can generally handle it, it sags a little bit,
+    // making the gap too tight.  This is a little extra clearance for
+    // that spot.
+    extra = nozzle_d;
     module envelope(r=4) {
         translate([0, 0, 0])
-            linear_extrude(base0_h+nozzle_d)
+            linear_extrude(base0_h+nozzle_d+extra)
                 offset(r=nozzle_d/2, $fs=nozzle_d/2)
                     square([base0_w, base0_l], center=true);
 
@@ -312,7 +356,13 @@ module velbon_mount(nozzle_d=0.4) {
                 translate([0, 0, -0.1])
                     cylinder(h=mount_h+0.2, d=m5_free_d+nozzle_d,
                              $fs=nozzle_d/2);
-                translate([0, 0, mount_backing - m5_head_h])
+                // We cheat on the depth of the recess for the screw
+                // head in order to have a little more backing for the
+                // screw to hold.  If the head isn't perfectly flush,
+                // we're still okay because they're placed in the
+                // "hollow" of the mounting plate.
+                cheat = nozzle_d;
+                translate([0, 0, mount_backing - m5_head_h + cheat])
                     cylinder(h=m5_head_h+0.1, d=m5_head_d+nozzle_d,
                              $fs=nozzle_d/2);
             }
@@ -320,6 +370,6 @@ module velbon_mount(nozzle_d=0.4) {
     }
 }
 
-velbon_qb_6rl();
-translate([0, plate_l/2 + 2 + mount_w/2, 0])
-    rotate([0, 0, 90]) velbon_mount();
+velbon_qb_6rl(assembled=Assembled, index_pin=Index_Pin, nozzle_d=Nozzle_Diameter);
+translate([0, plate_l/2 + 2 + mount_w/2, 0]) rotate([0, 0, 90])
+    velbon_mount(nozzle_d=Nozzle_Diameter);
