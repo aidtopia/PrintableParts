@@ -29,8 +29,6 @@ module viltrox_l166t_storage_tray(l=193, w=130, h=30, r=5, frame_th=10, th=4, no
             difference($fs=nozzle_d/2) {
                 offset(r=th) footprint();
                 offset(r=nozzle_d/2) footprint();
-//                square([l+2*th+1, w-2*corner_size], center=true);
-//                square([l-2*corner_size, w+2*th+1], center=true);
             }
         }
     }
@@ -42,8 +40,6 @@ module viltrox_l166t_storage_tray(l=193, w=130, h=30, r=5, frame_th=10, th=4, no
                     difference($fs=nozzle_d/2) {
                         offset(r=th+i*th/10) footprint();
                         offset(r=nozzle_d/2) footprint();
-//                        square([l+4*th+1, w-2*corner_size], center=true);
-//                        square([l-2*corner_size, w+4*th+1], center=true);
                     }
                 }
             }
@@ -53,8 +49,6 @@ module viltrox_l166t_storage_tray(l=193, w=130, h=30, r=5, frame_th=10, th=4, no
                 difference($fs=nozzle_d/2) {
                     offset(r=2*th) footprint();
                     offset(r=th+nozzle_d/2) footprint();
-//                    square([l+4*th+1, w-2*corner_size], center=true);
-//                    square([l-2*corner_size, w+4*th+1], center=true);
                 }
             }
         }
