@@ -120,7 +120,7 @@ machine_screws = [
             ["flat",            9.2,        0.0,        2.50        ],
             ["pan",            10.0,        4.0,        0.0         ]],
         [ // nut                nut_w       nut_h           sides
-            ["hex",             8.0,        4,0,            6       ]]]];
+            ["hex",             8.0,        4.0,            6       ]]]];
 
 function find_bolt_params(size, table) =
     let (candidate=find_params(size, table=table))
