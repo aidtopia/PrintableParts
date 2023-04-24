@@ -4,6 +4,9 @@
 // Show the quick release parts assembled.
 Assembled = false;
 
+// Include the overhead mount that holds a quick release plate?
+Include_Mount = true;
+
 // Style for the index pin.  "spring" is recommended for PETG but not PLA. "fixed" and "reinforced" restricts the plate to video cameras that have an opening for an index pin.
 Index_Pin = "spring"; // ["none", "spring", "fixed", "reinforced"]
 
@@ -92,15 +95,17 @@ plate_rim_th = 1;
 
 // The camera bolt is 1/4"-20, partially threaded.
 bolt_close_d = inch(0.266);
-retainer_id  = inch(0.188);
-retainer_od  = inch(0.350);
+bolt_unthreaded_d = inch(0.188);
+bolt_threaded_d = inch(0.226);
+retainer_ids = [bolt_unthreaded_d, bolt_threaded_d];
+retainer_od  = inch(0.400);
 retainer_th  = 0.8;
 retainer_open_angle = 75;
 
 index_dy = -13.9;  // from bolt
-index_d  =   4.0;
+index_d  =   5.0;
 index_h  =  plate_h + 5;
-index_spring_d = 12;
+index_spring_d = 13;
 index_spring_h =  min(4, plate_h - plate_rim_h);
 index_spring_arms = 3;
 
@@ -253,7 +258,7 @@ module velbon_qb_6rl(assembled=$preview, index_pin="spring", nozzle_d=0.4) {
             difference() {
                 rounded_rect(cover_w-nozzle_d, cover_l-nozzle_d, r=4,
                              center=true);
-                circle(d=retainer_od+nozzle_d, $fs=nozzle_d/2);
+                circle(d=bolt_close_d+nozzle_d, $fs=nozzle_d/2);
                 if (index_pin != "none") {
                     translate([0, index_dy])
                         circle(d=index_d+nozzle_d, $fs=nozzle_d/2);
@@ -270,7 +275,7 @@ module velbon_qb_6rl(assembled=$preview, index_pin="spring", nozzle_d=0.4) {
         }
     }
     
-    module retainer() {
+    module retainer(retainer_id) {
         linear_extrude(retainer_th) {
             difference() {
                 circle(d=retainer_od);
@@ -298,8 +303,17 @@ module velbon_qb_6rl(assembled=$preview, index_pin="spring", nozzle_d=0.4) {
     translate([plate_x, 0, plate_z]) plate();
 
     retainer_x = assembled ? plate_x : base_x;
+    retainer_y = assembled ? 0 : (len(retainer_ids)-1)*(retainer_od+nozzle_d)/2;
     retainer_z = assembled ? plate_z + plate_h - plate_rim_h : 0;
-    translate([retainer_x, 0, retainer_z]) retainer();
+    translate([retainer_x, retainer_y, retainer_z]) {
+        retainer(retainer_ids[0]);
+        if (!assembled) {
+            for (i = [1:len(retainer_ids)-1]) {
+                translate([0, -i*(retainer_od+nozzle_d), 0])
+                    retainer(retainer_ids[i]);
+            }
+        }
+    }
     
     cover_rot_y = assembled ? 180 : 0;
     cover_x = assembled ? 0 : (plate_w/2 + 1 + cover_w/2);
@@ -371,5 +385,7 @@ module velbon_mount(nozzle_d=0.4) {
 }
 
 velbon_qb_6rl(assembled=Assembled, index_pin=Index_Pin, nozzle_d=Nozzle_Diameter);
-translate([0, plate_l/2 + 2 + mount_w/2, 0]) rotate([0, 0, 90])
-    velbon_mount(nozzle_d=Nozzle_Diameter);
+if (Include_Mount) {
+    translate([0, plate_l/2 + 2 + mount_w/2, 0]) rotate([0, 0, 90])
+        velbon_mount(nozzle_d=Nozzle_Diameter);
+}
