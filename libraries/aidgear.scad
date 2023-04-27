@@ -286,15 +286,15 @@ function AG_center_distance(g1, g2) =
     abs(d1 + d2) / 2;
 
 // Returns a list of points forming a 2D-polygon of the gear teeth.
-function AG_tooth_profile(g) =
+function AG_tooth_profile(g, first_tooth=undef, last_tooth=undef) =
     let (type = AG_type(g))
-    type == "AG gear" ? AG_spur_tooth_profile(g) :
+    type == "AG gear" ? AG_spur_tooth_profile(g, first_tooth, last_tooth) :
     type == "AG rack" ? AG_rack_tooth_profile(g) :
-    type == "AG ring" ? AG_spur_tooth_profile(g) :
+    type == "AG ring" ? AG_spur_tooth_profile(g, first_tooth, last_tooth) :
     assert(false, str("AG: '", type, "' is not a recognized gear type"))
     [];
 
-function AG_spur_tooth_profile(g) =
+function AG_spur_tooth_profile(g, first_tooth=undef, last_tooth=undef) =
     assert(AG_type(g) == "AG gear" || AG_type(g) == "AG ring")
     let (
         // The pitch circle, sometimes called the reference circle, is
@@ -357,15 +357,23 @@ function AG_spur_tooth_profile(g) =
         
         dtheta = 360 / tooth_count,
         
+        first = is_undef(first_tooth) ? 1 : first_tooth,
+        last  = is_undef(last_tooth)  ? tooth_count : last_tooth,
+        
         teeth = [ for (i = [1:tooth_count])
             let (
-                theta = i * dtheta,
+                theta = (i-1) * dtheta,
                 theta1 = theta - tooth_angle/2,
                 theta2 = theta + tooth_angle/2,
-                tooth_path = [
-                    each rotated_points(edge1, theta1),
-                    each rotated_points(edge2, theta2)
-                ]
+                tooth_path = (first <= i && i <= last) ?
+                    [
+                        each rotated_points(edge1, theta1),
+                        each rotated_points(edge2, theta2)
+                    ] :
+                    [
+                        [ root_r*cos(theta1), root_r*sin(theta1) ],
+                        [ root_r*cos(theta2), root_r*sin(theta2) ],
+                    ]
             )
             each tooth_path
         ],
@@ -448,19 +456,21 @@ function AG_helix_twist(g, th=1) =
     let (circumference = PI * AG_pitch_diameter(g))
         th * 360 * AG_helix_shear(g) / circumference;
 
-module AG_gear(gear, convexity=10, center=false) {
+module AG_gear(gear, convexity=10, center=false, first_tooth=undef, last_tooth=undef) {
     if (AG_type(gear) == "AG rack") {
         AG_rack(gear, convexity=convexity, center=center);
     } else {
         AG_cylindrical_gear(gear, convexity=convexity,
-                            center=center) {
+                            center=center,
+                            first_tooth=first_tooth,
+                            last_tooth=last_tooth) {
             children();
         }
     }
 }
 
 // Creates geometry for cylindrical spur, helical, and ring (internal) gears.
-module AG_cylindrical_gear(gear, convexity=10, center=false) {
+module AG_cylindrical_gear(gear, convexity=10, center=false, first_tooth=undef, last_tooth=undef) {
     assert(AG_type(gear) != "AG rack",
            str("AG: to create geometry for the rack \"", AG_name(gear),
                "\", use `AG_rack` instead of `AG_gear`."));
@@ -468,7 +478,9 @@ module AG_cylindrical_gear(gear, convexity=10, center=false) {
     herringbone = AG_herringbone(gear);
     w = herringbone ? th/2 : th;
     twist = AG_helix_twist(gear, w);
-    profile = AG_tooth_profile(gear);
+    profile =
+        AG_tooth_profile(gear, first_tooth=first_tooth,
+                         last_tooth=last_tooth);
     drop = center ? th/2 : 0;
 
     translate([0, 0, -drop])
