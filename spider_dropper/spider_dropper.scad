@@ -38,22 +38,36 @@ module spider_dropper(drop_distance=24*25.4, nozzle_d=0.4) {
             }
         }
     }
+    
+    module deer_motor_shaft(h=1) {
+        shaped_h = min(h, 6.2);
+        linear_extrude(shaped_h, convexity=10) {
+            intersection() {
+                circle(d=7.1+nozzle_d);
+                square([7.1+nozzle_d, 5.7+nozzle_d], center=true);
+            }
+        }
+        passthru_h = min(h-shaped_h, 1);
+        translate([0, 0, shaped_h-0.1]) {
+            linear_extrude(passthru_h+0.2, convexity=10) {
+                circle(d=4.5+nozzle_d);
+            }
+        }
+        remainder_h = h - shaped_h - passthru_h;
+        if (remainder_h >= 0) {
+            translate([0, 0, shaped_h + passthru_h]) {
+                linear_extrude(remainder_h+0.1, convexity=10) {
+                    circle(d=8+nozzle_d);
+                }
+            }
+        }
+    }
 
     module drive_gear() {
         difference() {
-            AG_gear(drive);
-            translate([0, 0, -1]) {
-                rotate([0, 0, 180/AG_tooth_count(drive)]) intersection() {
-                    cube(AG_tips_diameter(drive)/2);
-                    difference() {
-                        cylinder(h=10, d=AG_tips_diameter(drive)+1);
-                        translate([0, 0, -1]) {
-                            cylinder(h=12, d=AG_root_diameter(drive)-1);
-                        }
-                    }
-                }
-            }
-            translate([0, 0, -1]) tt_motor_shaft(h=10);
+            AG_gear(drive, first_tooth=1,
+                    last_tooth=ceil(0.75*AG_tooth_count(drive)));
+            translate([0, 0, -1]) deer_motor_shaft(h=10);
         }
     }
    
@@ -96,7 +110,7 @@ module spider_dropper(drop_distance=24*25.4, nozzle_d=0.4) {
                 }
             }
             translate([dx/2, 0, -plate_th/2-0.2])
-                cylinder(h=total_h, d=axle_d);
+                cylinder(h=total_h, d=7.1+nozzle_d);
         }
     }
 
@@ -113,3 +127,65 @@ module spider_dropper(drop_distance=24*25.4, nozzle_d=0.4) {
 }
 
 spider_dropper($fa=6, $fs=0.2);
+
+module deer_motor_mount(th=3, nozzle_d=0.4) {
+    deer_shaft_d = 7.1;
+    deer_shaft_af = 5.7;  // across flats
+    deer_shaft_h = 6.2;
+    deer_shaft_screw = "M4";  // machine screw
+    deer_shaft_screw_l = 10;
+    deer_base_d = 21;  // at the face plate.  Tapers down to 17.
+    deer_base_h = 3.7;
+    deer_mounting_screw = "M3 self-tapping";  // a #6 would fit
+    deer_mounting_screw_l = 12;
+    deer_mount_dx1 = 81;  // separation between mounting screws nearest the hub
+    deer_mount_dx2 = 57;
+    deer_mount_dy1 = 18; // hub to dx1 line
+    deer_mount_dy2 = 35; // dx1 line to dx2 line
+    deer_h = 37.6;
+
+    deer_mount_free_d = 3.6 + nozzle_d;
+    deer_mount_extra_d = max(2*th, 4);
+    deer_mount_d = deer_mount_free_d + deer_mount_extra_d;
+
+    cutout = [
+        [2*th, -(deer_mount_dy1+3*th)],
+        [2*th, -(deer_mount_dy1+deer_mount_dy2-3*th)],
+        [deer_mount_dx2/2-3*th, -(deer_mount_dy1+deer_mount_dy2-3*th)],
+        [deer_mount_dx1/2-4*th, -(deer_mount_dy1+3*th)],
+    ];
+
+    linear_extrude(min(th, deer_base_h), convexity=10) {
+        difference() {
+            hull() {
+                circle(d=deer_base_d + deer_mount_extra_d);
+                translate([0, -deer_mount_dy1]) {
+                    translate([-deer_mount_dx1/2, 0]) circle(d=deer_mount_d);
+                    translate([ deer_mount_dx1/2, 0]) circle(d=deer_mount_d);
+                    translate([0, -deer_mount_dy2]) {
+                        translate([-deer_mount_dx2/2, 0]) circle(d=deer_mount_d);
+                        translate([ deer_mount_dx2/2, 0]) circle(d=deer_mount_d);
+                    }
+                }
+            }
+            circle(d=deer_base_d + nozzle_d);
+            translate([0, -deer_mount_dy1]) {
+                translate([-deer_mount_dx1/2, 0])
+                    circle(d=deer_mount_free_d, $fs=nozzle_d/2);
+                translate([ deer_mount_dx1/2, 0])
+                    circle(d=deer_mount_free_d, $fs=nozzle_d/2);
+                translate([0, -deer_mount_dy2]) {
+                    translate([-deer_mount_dx2/2, 0])
+                        circle(d=deer_mount_free_d, $fs=nozzle_d/2);
+                    translate([ deer_mount_dx2/2, 0])
+                        circle(d=deer_mount_free_d, $fs=nozzle_d/2);
+                }
+            }
+            // Just reducing the material needed:
+            polygon(cutout);
+            mirror([1, 0, 0]) polygon(cutout);
+        }
+    }
+}
+
+//deer_motor_mount(th=1.2);
