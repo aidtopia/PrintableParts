@@ -288,9 +288,9 @@ function AG_center_distance(g1, g2) =
 // Returns a list of points forming a 2D-polygon of the gear teeth.
 function AG_tooth_profile(g, first_tooth=undef, last_tooth=undef) =
     let (type = AG_type(g))
-    type == "AG gear" ? AG_spur_tooth_profile(g, first_tooth, last_tooth) :
+    type == "AG gear" ? AG_spur_tooth_profile(g, first_tooth=first_tooth, last_tooth=last_tooth) :
     type == "AG rack" ? AG_rack_tooth_profile(g) :
-    type == "AG ring" ? AG_spur_tooth_profile(g, first_tooth, last_tooth) :
+    type == "AG ring" ? AG_spur_tooth_profile(g, first_tooth=first_tooth, last_tooth=last_tooth) :
     assert(false, str("AG: '", type, "' is not a recognized gear type"))
     [];
 
@@ -371,8 +371,7 @@ function AG_spur_tooth_profile(g, first_tooth=undef, last_tooth=undef) =
                         each rotated_points(edge2, theta2)
                     ] :
                     [
-                        [ root_r*cos(theta1), root_r*sin(theta1) ],
-                        [ root_r*cos(theta2), root_r*sin(theta2) ],
+                        [ root_r*cos(theta), root_r*sin(theta) ]
                     ]
             )
             each tooth_path
@@ -398,7 +397,7 @@ function AG_spur_tooth_profile(g, first_tooth=undef, last_tooth=undef) =
         // TODO tip relief
         // TODO crowning of tooth surface?
     )
-    
+
     assert(root_r > 0)
 
     [ each rim, each teeth ];
