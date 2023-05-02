@@ -11,15 +11,21 @@
 
 use <aidgear.scad>
 
-module spider_dropper(drop_distance=24*25.4, nozzle_d=0.4) {
+function inch(x) = x * 25.4;
+function thou(x) = inch(x/1000);
+
+module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
     m3_free_d = 3.6;
     m3_head_d = 6.0;
     m4_free_d = 4.5;
     m4_head_d = 8.0;
     m4_head_h = 3.1;
+    no6_free_d = thou(149.5);
     
     string_d = 2;
 
+    // Key dimensions for "reindeer" motors like those sold by
+    // FrightProps and MonsterGuts.
     deer_shaft_d = 7.0;
     deer_shaft_af = 5.5;  // across flats
     deer_shaft_h = 6.2;
@@ -44,8 +50,17 @@ module spider_dropper(drop_distance=24*25.4, nozzle_d=0.4) {
         [ deer_mount_dx2/2, -deer_mount_dy2]
     ];
     
+    // We make the gears thick enough to completely cover the motor shaft
+    // and recess the head of the shaft screw.
     gear_th = deer_shaft_h + 2 + m4_head_h;
 
+    // The drive gear is connected directly to the motor shaft.  It has
+    // teeth 75% of the way around, and is toothless on the remaining
+    // quarter.  The drive gear turns out winder gear, which is attached
+    // to the spool.  We use helical teeth for strength and to pull the
+    // gears into alignment.  Earlier attempts to use herringbone teeth
+    // would often jam if there was a slight misalignment when the teeth
+    // re-engage after a drop.  The helical gears are more forgiving.
     drive = AG_define_gear(
         iso_module=1.25,
         tooth_count=55,
@@ -53,10 +68,10 @@ module spider_dropper(drop_distance=24*25.4, nozzle_d=0.4) {
         helix_angle=15,
         herringbone=false
     );
-    spool = AG_define_gear(tooth_count=11, mate=drive);
-    dx = AG_center_distance(drive, spool);
+    winder = AG_define_gear(tooth_count=11, mate=drive);
+    dx = AG_center_distance(drive, winder);
 
-    spool_turns = 3/4*AG_tooth_count(drive) / AG_tooth_count(spool);
+    spool_turns = 3/4*AG_tooth_count(drive) / AG_tooth_count(winder);
     spool_dia = drop_distance / (spool_turns * PI);
     spool_h = 10;
     
@@ -112,14 +127,14 @@ module spider_dropper(drop_distance=24*25.4, nozzle_d=0.4) {
         }
     }
    
-    module spool() {
+    module spool_assembly() {
         difference() {
             union() {
-                AG_gear(spool);
+                AG_gear(winder);
 
-                translate([0, 0, AG_thickness(spool)]) {
+                translate([0, 0, AG_thickness(winder)]) {
                     translate([0, 0, -0.1])
-                        cylinder(h=spacer_h+0.2, d=AG_tips_diameter(spool), $fs=nozzle_d/2);
+                        cylinder(h=spacer_h+0.2, d=AG_tips_diameter(winder), $fs=nozzle_d/2);
                 
                     translate([0, 0, spacer_h]) {
                         difference() {
@@ -138,12 +153,12 @@ module spider_dropper(drop_distance=24*25.4, nozzle_d=0.4) {
                 }
             }
             translate([0, 0, -0.1])
-                cylinder(h=spool_h+AG_thickness(spool)+0.2, d=bore_d, $fs=nozzle_d/2);
+                cylinder(h=spool_h+AG_thickness(winder)+0.2, d=bore_d, $fs=nozzle_d/2);
         }
     }
     
     module plate() {
-        total_h = AG_thickness(spool) + spacer_h + spool_h + plate_th;
+        total_h = AG_thickness(winder) + spacer_h + spool_h + plate_th;
         difference() {
             translate([plate_offset, 0, 0]) union() {
                 linear_extrude(plate_th, center=true) hull() {
@@ -170,7 +185,7 @@ module spider_dropper(drop_distance=24*25.4, nozzle_d=0.4) {
         translate([0, 0, plate_th/2-0.1]) {
             translate([-dx/2, 0, 0]) {
                 cylinder(h=total_h, d=axle_d, $fs=nozzle_d/2);
-                cylinder(h=spacer_h+0.1, d=AG_root_diameter(spool));
+                cylinder(h=spacer_h+0.1, d=AG_root_diameter(winder));
             }
         }
 
@@ -198,7 +213,6 @@ module spider_dropper(drop_distance=24*25.4, nozzle_d=0.4) {
     }
     
     module bracket() {
-        no6_free_d = 0.1495*25.4;
         difference() {
             translate([-bracket_w/2, plate_h/2, 0])
             union() {
@@ -220,13 +234,13 @@ module spider_dropper(drop_distance=24*25.4, nozzle_d=0.4) {
     if ($preview) {
         translate([0, 0, plate_th/2]) plate();
         translate([dx/2, 0, plate_th + spacer_h]) drive_gear();
-        translate([-dx/2, 0, plate_th + spacer_h]) spool();
+        translate([-dx/2, 0, plate_th + spacer_h]) spool_assembly();
         translate([plate_offset, 0, -(bracket_h-2*plate_th)]) bracket();
     } else {
         translate([0, 0, plate_th/2]) plate();
         translate([AG_tips_diameter(drive)/2+1, (plate_h + AG_tips_diameter(drive))/2+1, 0])
             drive_gear();
-        translate([-(spool_dia+3)/2, (plate_h + spool_dia)/2+3, spool_h + AG_thickness(spool)]) rotate([180, 0, 0]) spool();
+        translate([-(spool_dia+3)/2, (plate_h + spool_dia)/2+3, spool_h + AG_thickness(winder)]) rotate([180, 0, 0]) spool_assembly();
         translate([-(bracket_h+2), (bracket_w-plate_h)/2, plate_h/2]) rotate([-90, 0, 90]) bracket();
     }
 }
