@@ -14,6 +14,17 @@ use <aidgear.scad>
 function inch(x) = x * 25.4;
 function thou(x) = inch(x/1000);
 
+module rounded_rect(l, w, r) {
+    dx = l/2 - r;
+    dy = w/2 - r;
+    hull() {
+        translate([-dx, -dy]) circle(r=r);
+        translate([ dx, -dy]) circle(r=r);
+        translate([-dx,  dy]) circle(r=r);
+        translate([ dx,  dy]) circle(r=r);
+    }
+}
+
 module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
     m3_free_d = 3.6;
     m3_head_d = 6.0;
@@ -51,16 +62,16 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
     ];
     
     // We make the gears thick enough to completely cover the motor shaft
-    // and recess the head of the shaft screw.
+    // and also recess the head of the shaft screw.
     gear_th = deer_shaft_h + 2 + m4_head_h;
 
     // The drive gear is connected directly to the motor shaft.  It has
     // teeth 75% of the way around, and is toothless on the remaining
-    // quarter.  The drive gear turns out winder gear, which is attached
-    // to the spool.  We use helical teeth for strength and to pull the
-    // gears into alignment.  Earlier attempts to use herringbone teeth
-    // would often jam if there was a slight misalignment when the teeth
-    // re-engage after a drop.  The helical gears are more forgiving.
+    // quarter.  The drive gear turns the winder gear, which is attached
+    // to the spool.  We use helical teeth for strength.  Earlier
+    // attempts to use herringbone teeth would often jam if there was a
+    // slight misalignment when the teeth re-engage after a drop.  The
+    // helical gears are more forgiving.
     drive = AG_define_gear(
         iso_module=1.25,
         tooth_count=55,
@@ -75,18 +86,20 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
     spool_d = drop_distance / (spool_turns * PI);
     spool_h = 10;
     
-    axle_d = 6;
-    bore_d = axle_d + nozzle_d;
-
+    spacer_d = AG_tips_diameter(winder);
     spacer_h = 2*nozzle_d;
 
+    axle_d = 6;
+    axle_l = spool_h + spacer_h + AG_thickness(winder);
+
     plate_th = deer_base_h - spacer_h;
-    plate_w = 2*plate_th + spool_d/2 + dx + AG_tips_diameter(drive)/2 + plate_th;
+    plate_l = 3*plate_th + spool_d/2 + dx + AG_tips_diameter(drive)/2;
     plate_offset = (AG_tips_diameter(drive) - spool_d)/4;
-    plate_h = max(AG_tips_diameter(drive), spool_d, deer_w) + 1;
+    plate_w = max(AG_tips_diameter(drive), spool_d, deer_w) + 1;
     plate_r = 10;
 
-    bracket_w = plate_th + plate_w + plate_th;
+    bracket_l = plate_th + plate_l + plate_th;
+    bracket_w = plate_w;
     bracket_h = plate_th + deer_h + 3*plate_th;
     
     module deer_motor_shaft(h=1) {
@@ -128,48 +141,46 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
     }
    
     module spool_assembly() {
+        module spacer() {
+            translate([0, 0, -0.1])
+                cylinder(h=spacer_h+0.2, d=spacer_d, $fs=nozzle_d/2);
+        }
+        module spool() {
+            difference() {
+                rotate_extrude(convexity=10, $fa=5) difference() {
+                    square([spool_d/2+2, spool_h-spacer_h]);
+                    translate([spool_d/2+spool_h, (spool_h-spacer_h)/2]) circle(r=spool_h, $fs=nozzle_d/2);
+                }
+                // hole for anchoring string to spool
+                translate([spool_d/2-1, 0, spool_h/2]) {
+                    rotate([0, -45, 0]) {
+                        cylinder(h=2*spool_h, d=string_d+nozzle_d, center=true, $fs=nozzle_d/2);
+                    }
+                }
+            }
+        }
+        
         difference() {
             union() {
                 AG_gear(winder);
-
                 translate([0, 0, AG_thickness(winder)]) {
-                    translate([0, 0, -0.1])
-                        cylinder(h=spacer_h+0.2, d=AG_tips_diameter(winder), $fs=nozzle_d/2);
-                
+                    spacer();
                     translate([0, 0, spacer_h]) {
-                        difference() {
-                            rotate_extrude(convexity=10, $fa=5) difference() {
-                                square([spool_d/2+2, spool_h-spacer_h]);
-                                translate([spool_d/2+spool_h, (spool_h-spacer_h)/2]) circle(r=spool_h, $fs=nozzle_d/2);
-                            }
-                            // hole for anchoring string to spool
-                            translate([spool_d/2-1, 0, spool_h/2]) {
-                                rotate([0, -45, 0]) {
-                                    cylinder(h=2*spool_h, d=string_d+nozzle_d, center=true, $fs=nozzle_d/2);
-                                }
-                            }
-                        }
+                        spool();
                     }
                 }
             }
             translate([0, 0, -0.1])
-                cylinder(h=spool_h+AG_thickness(winder)+0.2, d=bore_d, $fs=nozzle_d/2);
+                cylinder(h=axle_l+0.2, d=axle_d+nozzle_d, $fs=nozzle_d/2);
         }
     }
     
     module plate() {
         total_h = AG_thickness(winder) + spacer_h + spool_h + plate_th;
         difference() {
-            translate([plate_offset, 0, 0]) union() {
-                linear_extrude(plate_th, center=true) hull() {
-                    translate([-(plate_w/2-plate_r), -(plate_h/2-plate_r)])
-                        circle(r=plate_r, $fs=nozzle_d/2);
-                    translate([ (plate_w/2-plate_r), -(plate_h/2-plate_r)])
-                        circle(r=plate_r, $fs=nozzle_d/2);
-                    translate([-(plate_w/2-plate_r),  (plate_h/2-plate_r)])
-                        circle(r=plate_r, $fs=nozzle_d/2);
-                    translate([ (plate_w/2-plate_r),  (plate_h/2-plate_r)])
-                        circle(r=plate_r, $fs=nozzle_d/2);
+            translate([plate_offset, 0, 0]) {
+                linear_extrude(plate_th, center=true) {
+                    rounded_rect(plate_l, plate_w, plate_r, $fs=nozzle_d/2);
                 }
             }
             translate([dx/2, 0]) rotate([0, 0,-90]) {
@@ -214,18 +225,18 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
     
     module bracket() {
         difference() {
-            translate([-bracket_w/2, plate_h/2, 0])
+            translate([-bracket_l/2, plate_w/2, 0])
             union() {
-                translate([0, -plate_h/2, 0]) rotate([90, 0, 0])
-                linear_extrude(plate_h, center=true, convexity=10) {
+                translate([0, -plate_w/2, 0]) rotate([90, 0, 0])
+                linear_extrude(plate_w, center=true, convexity=10) {
                     difference() {
-                        square([bracket_w, bracket_h]);
-                        translate([plate_th, plate_th]) square([plate_w, deer_h]);
-                        translate([2*plate_th, plate_th+deer_h]) square([plate_w-2*plate_th, 3*plate_th]);
-                        translate([plate_th-nozzle_d/2, bracket_h-2*plate_th-nozzle_d/2]) square([plate_w+nozzle_d, plate_th+nozzle_d]);
+                        square([bracket_l, bracket_h]);
+                        translate([plate_th, plate_th]) square([plate_l, deer_h]);
+                        translate([2*plate_th, plate_th+deer_h]) square([plate_l-2*plate_th, 3*plate_th]);
+                        translate([plate_th-nozzle_d/2, bracket_h-2*plate_th-nozzle_d/2]) square([plate_l+nozzle_d, plate_th+nozzle_d]);
                     }
                 }
-                //cube([bracket_w, plate_th, bracket_h]);
+                //cube([bracket_l, plate_th, bracket_h]);
             }
             // TODO:  holes for mounting screws
         }
@@ -238,10 +249,10 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
         translate([plate_offset, 0, -(bracket_h-2*plate_th)]) bracket();
     } else {
         translate([0, 0, plate_th/2]) plate();
-        translate([AG_tips_diameter(drive)/2+1, (plate_h + AG_tips_diameter(drive))/2+1, 0])
+        translate([AG_tips_diameter(drive)/2+1, (plate_w + AG_tips_diameter(drive))/2+1, 0])
             drive_gear();
-        translate([-(spool_d+3)/2, (plate_h + spool_d)/2+3, spool_h + AG_thickness(winder)]) rotate([180, 0, 0]) spool_assembly();
-        translate([-(bracket_h+2), (bracket_w-plate_h)/2, plate_h/2]) rotate([-90, 0, 90]) bracket();
+        translate([-(spool_d+3)/2, (plate_w + spool_d)/2+3, spool_h + AG_thickness(winder)]) rotate([180, 0, 0]) spool_assembly();
+        translate([-(bracket_h+2), (bracket_l-plate_w)/2, plate_w/2]) rotate([-90, 0, 90]) bracket();
     }
 }
 
