@@ -69,7 +69,7 @@ module spider_dropper(drop_distance=24*25.4, nozzle_d=0.4) {
     plate_w = 2*plate_th + spool_dia/2 + dx + AG_tips_diameter(drive)/2 + plate_th;
     plate_offset = (AG_tips_diameter(drive) - spool_dia)/4;
     plate_h = max(AG_tips_diameter(drive), spool_dia, deer_w) + 1;
-    plate_r = 5;
+    plate_r = 10;
 
     bracket_w = plate_th + plate_w + plate_th;
     bracket_h = plate_th + deer_h + 3*plate_th;
@@ -119,7 +119,7 @@ module spider_dropper(drop_distance=24*25.4, nozzle_d=0.4) {
 
                 translate([0, 0, AG_thickness(spool)]) {
                     translate([0, 0, -0.1])
-                        cylinder(h=spacer_h+0.1, d=AG_tips_diameter(spool), $fs=nozzle_d/2);
+                        cylinder(h=spacer_h+0.2, d=AG_tips_diameter(spool), $fs=nozzle_d/2);
                 
                     translate([0, 0, spacer_h]) {
                         difference() {
