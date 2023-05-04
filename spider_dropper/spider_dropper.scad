@@ -24,9 +24,18 @@ module rounded_rect(l, w, r) {
     }
 }
 
+module slot(l, d) {
+    hull() {
+        translate([-l/2, 0]) circle(d=d);
+        translate([ l/2, 0]) circle(d=d);
+    }
+}
+
 module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
     m3_free_d = 3.6;
     m3_head_d = 6.0;
+    m3_flange_d = 7.0;
+    m3_flange_h = 0.7;
     m4_free_d = 4.5;
     m4_head_d = 8.0;
     m4_head_h = 3.1;
@@ -92,7 +101,7 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
     axle_l = spool_h + spacer_h + AG_thickness(winder);
 
     plate_th = deer_base_h - spacer_h;
-    plate_l = 3*plate_th + spool_d/2 + dx + AG_tips_diameter(drive)/2;
+    plate_l = 4*plate_th + spool_d/2 + dx + AG_tips_diameter(drive)/2;
     plate_offset = (AG_tips_diameter(drive) - spool_d)/4;
     plate_w = max(AG_tips_diameter(drive), spool_d, deer_w) + 1;
     plate_r = 10;
@@ -150,7 +159,7 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
                 rotate_extrude(convexity=10, $fa=5) difference() {
                     square([spool_d/2+2, spool_h-spacer_h]);
                     translate([spool_d/2+spool_h, (spool_h-spacer_h)/2])
-                        circle(r=spool_h, $fs=nozzle_d/2);
+                        scale([1, 0.5]) circle(r=spool_h, $fs=nozzle_d/2);
                 }
                 // hole for anchoring string to spool
                 translate([spool_d/2-1, 0, spool_h/2]) {
@@ -177,19 +186,20 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
     }
     
     module plate() {
-        total_h = AG_thickness(winder) + spacer_h + spool_h + plate_th;
+        total_h = axle_l + plate_th;
         difference() {
             translate([plate_offset, 0, 0]) {
                 linear_extrude(plate_th, center=true) {
                     rounded_rect(plate_l, plate_w, plate_r, $fs=nozzle_d/2);
                 }
             }
-            translate([dx/2, 0]) rotate([0, 0,-90]) {
+            translate([dx/2, 0]) rotate([0, 0, -90]) {
                 cylinder(h=plate_th+0.1, d=deer_base_d+nozzle_d, center=true, $fs=nozzle_d/2);
+                d = max(m3_head_d + nozzle_d, m3_flange_d);
                 deer_motor_mounts() {
                     cylinder(h=plate_th+0.1, d=m3_free_d, center=true, $fs=nozzle_d/2);
-                    translate([0, 0, 2.1])
-                        cylinder(h=plate_th+0.1, d=m3_head_d, center=true, $fs=nozzle_d/2);
+                    translate([0, 0, 2])
+                        cylinder(h=plate_th, d=d, center=true, $fs=nozzle_d/2);
                 }
             }
         }
@@ -202,7 +212,7 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
         }
 
         guide_w = min(plate_r, 4*string_d);
-        guide_h = total_h - string_d;
+        guide_h = total_h - spool_h/2;
         guide_d = string_d + nozzle_d;
         translate([-(dx+spool_d)/2, -spool_d/2, -plate_th/2]) {
             rotate([90, 0, 90])
@@ -212,7 +222,7 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
                         translate([-guide_w/2, 0]) square([guide_w, plate_th]);
                         translate([0, guide_h]) circle(d=guide_w, $fs=nozzle_d/2);
                     }
-                    translate([0, total_h-string_d]) {
+                    translate([0, guide_h]) {
                         hull() {
                             circle(d=guide_d, $fs=nozzle_d/2);
                             translate([0, string_d/4]) rotate([0, 0, 45])
@@ -232,30 +242,29 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
                 linear_extrude(plate_w, center=true, convexity=10) {
                     difference() {
                         square([bracket_l, bracket_h]);
-                        translate([plate_th, plate_th]) square([plate_l, deer_h]);
-                        translate([2*plate_th, plate_th+deer_h]) square([plate_l-2*plate_th, 3*plate_th]);
-                        translate([plate_th-nozzle_d/2, bracket_h-2*plate_th-nozzle_d/2]) square([plate_l+nozzle_d, plate_th+nozzle_d]);
+                        translate([plate_th, plate_th])
+                            square([plate_l, deer_h]);
+                        translate([2*plate_th, plate_th+deer_h])
+                            square([plate_l-2*plate_th, 3*plate_th]);
+                        translate([plate_th-nozzle_d/2, bracket_h-2*plate_th-nozzle_d/2])
+                            square([plate_l+nozzle_d, plate_th+nozzle_d]);
                     }
                 }
                 cube([bracket_l, plate_th, bracket_h]);
             }
-            translate([0, 0, bracket_h/2]) rotate([0, 90, 0]) {
-                linear_extrude(bracket_l+0.2, convexity=10, center=true) hull() {
-                    translate([0, -bracket_w/6]) circle(d=no6_free_d, $fs=nozzle_d/2);
-                    translate([0,  bracket_w/6]) circle(d=no6_free_d, $fs=nozzle_d/2);
+            translate([0, 0, bracket_h/2]) {
+                rotate([90, 0, 0]) rotate([0, 90, 0]) {
+                    linear_extrude(bracket_l+0.2, convexity=10, center=true)
+                        slot(l=bracket_w/3, d=no6_free_d, $fs=nozzle_d/2);
                 }
             }
-            translate([0, 0, -0.1]) {
-                linear_extrude(plate_th+0.2, convexity=10) hull() {
-                    translate([0, -bracket_w/6]) circle(d=no6_free_d, $fs=nozzle_d/2);
-                    translate([0,  bracket_w/6]) circle(d=no6_free_d, $fs=nozzle_d/2);
-                }
+            translate([0, 0, -0.1]) rotate([0, 0, 90]) {
+                linear_extrude(plate_th+0.2, convexity=10)
+                    slot(l=bracket_w/3, d=no6_free_d, $fs=nozzle_d/2);
             }
-            translate([0, 0.1, bracket_h/2]) rotate([90, 0, 0]) {
-                linear_extrude(bracket_w+2*plate_th+0.2, convexity=10, center=true) hull() {
-                    translate([0, -bracket_h/6]) circle(d=no6_free_d, $fs=nozzle_d/2);
-                    translate([0,  bracket_h/6]) circle(d=no6_free_d, $fs=nozzle_d/2);
-                }
+            translate([0, 0.1, bracket_h/2]) rotate([90, 90, 0]) {
+                linear_extrude(bracket_w+2*plate_th+0.2, convexity=10, center=true)
+                    slot(l=bracket_h/3, d=no6_free_d, $fs=nozzle_d/2);
             }
         }
     }
@@ -269,8 +278,12 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
         translate([0, 0, plate_th/2]) plate();
         translate([AG_tips_diameter(drive)/2+1, (plate_w + AG_tips_diameter(drive))/2+1, 0])
             drive_gear();
-        translate([-(spool_d+3)/2, (plate_w + spool_d)/2+3, spool_h + AG_thickness(winder)]) rotate([180, 0, 0]) spool_assembly();
-        translate([-(bracket_h+2), (bracket_l-plate_w)/2, plate_w/2+plate_th]) rotate([-90, 0, 90]) bracket();
+        translate([-(spool_d+3)/2, (plate_w + spool_d)/2+3, spool_h + AG_thickness(winder)])
+            rotate([180, 0, 0])
+                spool_assembly();
+        translate([-(bracket_h+2), (bracket_l-plate_w)/2, plate_w/2+plate_th])
+            rotate([-90, 0, 90])
+                bracket();
     }
 }
 
