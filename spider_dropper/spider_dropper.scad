@@ -229,10 +229,26 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
             }
         }
 
-        translate([0, 0, plate_th/2-0.1]) {
-            translate([-dx/2, 0, 0]) {
-                cylinder(h=total_h, d=axle_d, $fs=nozzle_d/2);
-                cylinder(h=spacer_h+0.1, d=AG_root_diameter(winder));
+        translate([-dx/2, 0, plate_th/2-0.1]) {
+            difference() {
+                union() {
+                    cylinder(h=spacer_h+0.1, d=AG_root_diameter(winder));
+                    translate([0, 0, spacer_h]) {
+                        cylinder(h=axle_l+0.1, d=axle_d, $fs=nozzle_d/2);
+                        translate([0, 0, axle_l]) {
+                            cylinder(h=nozzle_d, d1=axle_d, d2=axle_d+2*nozzle_d, $fs=nozzle_d/2);
+                            translate([0, 0, nozzle_d]) {
+                                cylinder(h=plate_th, d1=axle_d+2*nozzle_d, d2=axle_d-2*nozzle_d, $fs=nozzle_d/2);
+                            }
+                        }
+                    }
+                }
+                translate([0, 0, spacer_h+axle_l+plate_th/6]) {
+                    cylinder(h=3*plate_th, d=axle_d/2, center=true, $fs=nozzle_d/2);
+                    cube([2.25*nozzle_d, axle_d+2*nozzle_d, 3*plate_th], center=true);
+                    rotate([0, 0, 90])
+                        cube([2.25*nozzle_d, axle_d+2*nozzle_d, 3*plate_th], center=true);
+                }
             }
         }
 
