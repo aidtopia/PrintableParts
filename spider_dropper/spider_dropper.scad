@@ -161,10 +161,35 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
                     translate([spool_d/2+spool_h, (spool_h-spacer_h)/2])
                         scale([1, 0.5]) circle(r=spool_h, $fs=nozzle_d/2);
                 }
-                // hole for anchoring string to spool
-                translate([spool_d/2-1, 0, spool_h/2]) {
-                    rotate([0, -45, 0]) {
-                        cylinder(h=2*spool_h, d=string_d+nozzle_d, center=true, $fs=nozzle_d/2);
+                string_r = string_d/2;
+                knot_r   = 4*string_r;
+                post_r   = 1.5*string_r;
+                dr = knot_r - post_r;
+                r0 = 0;
+                r1 = post_r;
+                r2 = r1 + dr/2;
+                r3 = knot_r;
+                y0 = spool_h/4;
+                y1 = y0 + dr/2;
+                y2 = spool_h;
+                y3 = y2 + nozzle_d;
+                translate([spool_d/2-knot_r, 0, 0]) union() {
+                    rotate_extrude(convexity=8, $fs=nozzle_d/2) {
+                        polygon([
+                            [r0, y3],
+                            [r0, y2],
+                            [r1, y2],
+                            [r1, y1],
+                            [r2, y0],
+                            [r3, y1],
+                            [r3, y3]
+                        ]);
+                    }
+                    translate([r2, 0, spool_h/2]) rotate([0, 90, 0]) {
+                        linear_extrude(knot_r, convexity=8) {
+                            rotate([0, 0, 45])
+                                square(string_d*cos(45), center=true);
+                        }
                     }
                 }
             }
