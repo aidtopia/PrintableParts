@@ -101,7 +101,7 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
     spacer_h = 2*nozzle_d;
 
     plate_th = deer_base_h - spacer_h;
-    plate_l = 4*plate_th + spool_d/2 + dx + AG_tips_diameter(drive)/2;
+    plate_l = plate_th + spool_d/2 + dx + AG_tips_diameter(drive)/2;
     plate_offset = (AG_tips_diameter(drive) - spool_d)/4;
     plate_w = max(AG_tips_diameter(drive), spool_d, deer_w) + 1;
     plate_r = 10;
@@ -289,18 +289,19 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
                     }
                 }
             }
+
             translate([dx/2, 0, 0]) rotate([0, 0, -90]) deer_motor_mounts();
+
+            translate([plate_offset+plate_l/2-plate_r-m5_free_d/2, 0, -plate_th/2+0.5])
+                rotate([0, 0, -90])
+                    linear_extrude(1, center=true, convexity=10) mirror([1, 0, 0])
+                        text("Prop Dropper", size=6, halign="center", valign="baseline");
         }
 
         translate([-dx/2, 0, plate_th/2-0.1]) axle();
 
         translate([-(dx+spool_d)/2, -spool_d/2, -plate_th/2])
             rotate([0, 0, 90]) guide();
-        
-        translate([dx/2+AG_tips_diameter(drive)/2, 0, plate_th/2-0.1])
-            rotate([0, 0, -90])
-                linear_extrude(1, center=true, convexity=10)
-                    text("Prop Dropper", size=6, halign="center", valign="bottom");
     }
     
     if ($preview) {
