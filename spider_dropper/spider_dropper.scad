@@ -73,13 +73,14 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
     ];
     
     // We make the gears thick enough to completely cover the motor shaft
-    // and also recess the head of the shaft screw.
-    gear_th = deer_shaft_h + 2 + m4_head_h;
+    // and have a cap for the hub screw to hold.  To recess the head of
+    // the hub screw, also add m4_head_h.  But that makes both gears
+    // thicker, using more plastic and more printing time.
+    gear_th = deer_shaft_h + 2 ; //+ m4_head_h;
 
     // The drive gear is connected directly to the motor shaft.  It has
     // teeth 3/4 of the way around, and is toothless on the remaining
-    // quarter.  The drive gear turns the winder gear, which is attached
-    // to the spool.  We use helical teeth for smooth, quiet operation and
+    // quarter.  We use helical teeth for smooth, quiet operation and
     // durability.  Earlier attempts to use herringbone teeth would jam
     // if there was a slight misalignment when the teeth re-engage after
     // a drop.  Helical gears are more forgiving.
@@ -90,6 +91,8 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
         helix_angle=15,
         herringbone=false
     );
+    // The drive gear turns the winder gear, which is attached to the
+    // spool.
     winder = AG_define_gear(tooth_count=11, mate=drive);
     dx = AG_center_distance(drive, winder);
 
