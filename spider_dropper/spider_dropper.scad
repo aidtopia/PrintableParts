@@ -93,7 +93,7 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
     );
     // The drive gear turns the winder gear, which is attached to the
     // spool.
-    winder = AG_define_gear(tooth_count=11, mate=drive);
+    winder = AG_define_gear(tooth_count=12, mate=drive);
     dx = AG_center_distance(drive, winder);
 
     actual_drive_teeth = ceil(3/4 * AG_tooth_count(drive));
