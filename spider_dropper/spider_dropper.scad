@@ -96,7 +96,8 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
     winder = AG_define_gear(tooth_count=11, mate=drive);
     dx = AG_center_distance(drive, winder);
 
-    spool_turns = 3/4*AG_tooth_count(drive) / AG_tooth_count(winder);
+    actual_drive_teeth = ceil(3/4 * AG_tooth_count(drive));
+    spool_turns = actual_drive_teeth / AG_tooth_count(winder);
     spool_d = drop_distance / (spool_turns * PI);
     spool_h = 10;
     
@@ -165,7 +166,7 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
 
     module drive_gear() {
         difference() {
-            AG_gear(drive, first_tooth=1, last_tooth=ceil(0.75*AG_tooth_count(drive)));
+            AG_gear(drive, first_tooth=1, last_tooth=actual_drive_teeth);
             translate([0, 0, -0.1])
                 deer_motor_spline(h=AG_thickness(drive)+0.1);
         }
