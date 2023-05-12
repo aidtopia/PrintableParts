@@ -321,7 +321,7 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
 
         translate([-dx/2, 0, plate_th/2-0.1]) axle();
 
-        translate([-(dx+spool_d)/2, -spool_d/2, -plate_th/2])
+        translate([-(dx+spool_flange_d)/2, -spool_d/2, -plate_th/2])
             rotate([0, 0, 90]) guide();
     }
     
@@ -362,8 +362,11 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
                         translate([0, -bracket_w/2]) square([1, bracket_w]);
                     }
                 }
-                translate([bracket_l/2,  dy, 0]) screw_hole();
-                translate([bracket_l/2, -dy, 0]) screw_hole();
+                translate([bracket_l/2,  bracket_w/4, 0]) screw_hole();
+                translate([bracket_l/2, -bracket_w/4, 0]) screw_hole();
+                translate([bracket_l/2, 0, plate_th]) rotate([0, 0, -90])
+                    linear_extrude(1, center=true, convexity=8)
+                        text("Ceiling", 7, halign="center", valign="center");
             }
         }
         translate([0, 0, -plate_th]) {
