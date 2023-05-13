@@ -251,17 +251,17 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
 
         module axle() {
             difference() {
-                union() {
-                    cylinder(h=spacer_h+0.1, d=AG_root_diameter(winder));
-                    translate([0, 0, spacer_h]) {
-                        cylinder(h=axle_l+0.1, d=axle_d, $fs=nozzle_d/2);
-                        translate([0, 0, axle_l]) {
-                            cylinder(h=nozzle_d, d1=axle_d, d2=axle_d+2*nozzle_d);
-                            translate([0, 0, nozzle_d]) {
-                                cylinder(h=plate_th, d1=axle_d+2*nozzle_d, d2=axle_d-2*nozzle_d);
-                            }
-                        }
-                    }
+                rotate_extrude($fs=nozzle_d/2) {
+                    polygon([
+                        [0, -0.1],
+                        [AG_root_diameter(winder)/2, -0.1],
+                        [AG_root_diameter(winder)/2, spacer_h],
+                        [axle_d/2, spacer_h],
+                        [axle_d/2, spacer_h+axle_l],
+                        [(axle_d+2*nozzle_d)/2, spacer_h+axle_l+nozzle_d],
+                        [(axle_d-2*nozzle_d)/2, spacer_h+axle_l+nozzle_d+plate_th],
+                        [0, spacer_h+axle_l+nozzle_d+plate_th]
+                    ]);
                 }
                 translate([0, 0, spacer_h+axle_l+plate_th/6]) {
                     cylinder(h=3*plate_th, d=axle_d/2, center=true);
