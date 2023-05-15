@@ -61,7 +61,7 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
     deer_mounting_screw_l = 12;
     deer_mount_dx1 = 81;  // separation between mounting screws nearest the hub
     deer_mount_dx2 = 57;
-    deer_mount_dy1 = 18; // hub to dx1 line
+    deer_mount_dy1 = 17; // hub to dx1 line
     deer_mount_dy2 = 35 + deer_mount_dy1; // hub to dx2 line
     deer_w = 90;
     deer_l = 90;
