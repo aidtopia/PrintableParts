@@ -8,6 +8,17 @@
 // weight of the spider will cause the spool to unwind rapidly (the
 // drop).  When the teeth again engage, the spider will climb back up.
 
+// How far the prop should drop.
+Drop_Distance = 24; // [1:100]
+
+// Units for Drop Distance.
+Drop_Distance_Units = "inch"; // ["inch", "mm", "cm"]
+
+Include_Base_Plate = true;
+Include_Drive_Gear = true;
+Include_Spool_Assembly = true;
+Include_Ceiling_Bracket = true;
+
 use <aidgear.scad>
 
 function inch(x) = x * 25.4;
@@ -101,8 +112,8 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
     actual_drive_teeth = ceil(3/4 * AG_tooth_count(drive));
     spool_turns = actual_drive_teeth / AG_tooth_count(winder);
     spool_d = drop_distance / (spool_turns * PI);  // to bottom of groove
-    spool_h = 10;
     spool_flange_d = spool_d + string_d*spool_turns;
+    spool_h = 10;
     
     spacer_d = AG_tips_diameter(winder);
     spacer_h = 2*nozzle_d;
@@ -115,6 +126,7 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
 
     axle_d = 6;
     axle_l = spool_h + spacer_h + AG_thickness(winder);
+    assert(axle_d < AG_root_diameter(winder));
 
     guide_w = min(plate_r, 4*string_d);
     guide_h = axle_l + plate_th - spool_h/2;
@@ -375,22 +387,40 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
         }
     }
     
-    if ($preview) {
-        translate([0, 0, plate_th/2]) plate();
-        translate([dx/2, 0, plate_th + spacer_h]) drive_gear();
-        translate([-dx/2, 0, plate_th + spacer_h]) spool_assembly();
-        translate([plate_l/2 + plate_offset - plate_r, 0, 0])
-            ceiling_bracket();
-    } else {
-        translate([0, 0, plate_th/2]) plate();
-        translate([AG_tips_diameter(drive)/2+1, (plate_w + AG_tips_diameter(drive))/2+1, 0])
-            drive_gear();
-        translate([-(spool_flange_d+2)/2, (plate_w + spool_flange_d)/2+1, spool_h + AG_thickness(winder)])
-            rotate([180, 0, 0])
-                spool_assembly();
-        translate([plate_l/2 + plate_offset + 1 + bracket_l, 0, plate_r])
-            rotate([0, 90, 0]) ceiling_bracket();
+    show_assembled = $preview;
+    
+    if (Include_Base_Plate) {
+        t = [0, 0, plate_th/2];
+        translate(t) plate();
+    }
+
+    if (Include_Drive_Gear) {
+        t = show_assembled ?
+            [dx/2, 0, plate_th + spacer_h] :
+            [AG_tips_diameter(drive)/2+1, (plate_w+AG_tips_diameter(drive))/2+1, 0];
+        translate(t) drive_gear();
+    }
+
+    if (Include_Spool_Assembly) {
+        t = show_assembled ?
+            [-dx/2, 0, plate_th + spacer_h] :
+            [-(spool_flange_d+2)/2, (plate_w+spool_flange_d)/2+1, spool_h+AG_thickness(winder)];
+        r = show_assembled ? [0, 0, 0] : [180, 0, 0];
+        translate(t) rotate(r) spool_assembly();
+    }
+
+    if (Include_Ceiling_Bracket) {
+        t = show_assembled ?
+            [plate_l/2 + plate_offset - plate_r, 0, 0] :
+            [plate_l/2 + plate_offset + 1 + bracket_l, 0, plate_r];
+        r = show_assembled ? [0, 0, 0] : [0, 90, 0];
+        translate(t) rotate(r) ceiling_bracket();
     }
 }
 
-spider_dropper(drop_distance=inch(18));
+drop_distance =
+    Drop_Distance_Units == "inch" ? inch(Drop_Distance) :
+    Drop_Distance_Units == "mm"   ? Drop_Distance :
+    Drop_Distance_Units == "cm"   ? 10*Drop_Distance : Drop_Distance;
+
+spider_dropper(drop_distance=drop_distance);
