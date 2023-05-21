@@ -37,6 +37,40 @@ module for_each_position(positions) {
     for (position=positions) translate(position) children();
 }
 
+module circular_arrow(r, theta0=0, theta1=360, th=1) {
+    dir = sign(theta1 - theta0);
+    function circumference(r) = 2*PI*r;
+    function theta_at(v) = theta1 - v * dir * 360 / circumference(r);
+    function polar(r, theta) = r*[cos(theta), sin(theta)];
+    function p(u, v) = polar(r+u, theta_at(v));
+    function lerp(t, x0, x1) = x0 + (x1-x0)*t;
+    facet_count =
+        $fn > 0 ? $fn
+                : round(max($fa > 0 ? 360/$fa : 30,
+                            circumference(r) / ($fs > 0 ? $fs : 2)));
+    dtheta = dir * 360 / facet_count;
+
+    arrowhead_w = 4*th;
+    arrowhead_l = 3*arrowhead_w;
+    
+    // The "neck" is approximately where the head meets the tail.
+    theta_base = theta_at(arrowhead_l-th);
+    theta_neck = dtheta * floor(theta_base / dtheta);
+    step = 1 / round(facet_count * arrowhead_l / circumference(r));
+
+    polygon([
+        each [for (theta=[theta0:dtheta:theta_neck]) polar(r+th/2, theta)],
+        each [if (theta_base != theta_neck) polar(r+th/2, theta_base)],
+        each [for (t=[0:step:1])
+                p(lerp(t, arrowhead_w/2, 0), lerp(t, arrowhead_l, 0))],
+        each [for (t=[0:step:1])
+                p(lerp(t, 0, -arrowhead_w/2), lerp(t, 0, arrowhead_l))],
+        each [if (theta_base != theta_neck) polar(r-th/2, theta_base)],
+        each [for (theta=[theta_neck:-dtheta:theta0]) polar(r-th/2, theta)],
+        each [if (theta0 % dtheta != 0) polar(r-th/2, theta0)]
+    ]);
+}
+
 module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
     m3_free_d = 3.6;
     m3_head_d = 6.0;
@@ -182,6 +216,9 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
             AG_gear(drive, first_tooth=1, last_tooth=actual_drive_teeth);
             translate([0, 0, -0.1])
                 deer_motor_spline(h=AG_thickness(drive)+0.1);
+            translate([0, 0, AG_thickness(drive)])
+                linear_extrude(1, center=true)
+                    circular_arrow(0.40*AG_tips_diameter(drive), 160, 20);
         }
     }
    
@@ -205,7 +242,7 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
                 y1 = y0 + dr/2;
                 y2 = spool_h;
                 y3 = y2 + nozzle_d;
-                translate([spool_d/2-knot_r-plate_th, 0, 0]) union() {
+                translate([spool_d/2-knot_r-plate_th, 0, 0]) {
                     rotate_extrude(convexity=8, $fs=nozzle_d/2) {
                         polygon([
                             [r0, y3],
@@ -234,6 +271,9 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
                 }
                 // The string is secured to the spool in the pocket.
                 pocket();
+                translate([0, 0, spool_h-spacer_h])
+                    linear_extrude(2, convexity=6, center=true)
+                        circular_arrow(0.4*spool_flange_d, 100, 260);
             }
         }
         
@@ -242,9 +282,7 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
                 AG_gear(winder);
                 translate([0, 0, AG_thickness(winder)]) {
                     spacer();
-                    translate([0, 0, spacer_h]) {
-                        spool();
-                    }
+                    translate([0, 0, spacer_h]) spool();
                 }
             }
             translate([0, 0, -0.1])
@@ -321,8 +359,10 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
 
             translate([plate_offset+plate_l/2-plate_r-m5_free_d/2, 0, -plate_th/2+0.5])
                 rotate([0, 0, -90])
-                    linear_extrude(1, center=true, convexity=10) mirror([1, 0, 0])
-                        text("Prop Dropper", size=6, halign="center", valign="baseline");
+                    linear_extrude(1, center=true, convexity=10)
+                        mirror([1, 0, 0])
+                            text("Prop Dropper", size=6,
+                                 halign="center", valign="baseline");
         }
 
         translate([-dx/2, 0, plate_th/2-0.1]) axle();
@@ -340,7 +380,8 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
                 difference() {
                     hull() {
                         circle(r=bracket_r);
-                        translate([bracket_r-plate_th/2, 0]) square([plate_th, 2*bracket_r], center=true);
+                        translate([bracket_r-plate_th/2, 0])
+                            square([plate_th, 2*bracket_r], center=true);
                     }
                     circle(d=m5_free_d, $fs=nozzle_d/2);
                 }
