@@ -37,12 +37,6 @@ module for_each_position(positions) {
     for (position=positions) translate(position) children();
 }
 
-module slot(l, d, center=false) {
-    ends = [ [-l/2, 0], [l/2, 0] ];
-    origin = center ? [0, 0] : [l/2, 0];
-    translate(origin) hull() for_each_position(ends) circle(d=d);
-}
-
 module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
     m3_free_d = 3.6;
     m3_head_d = 6.0;
