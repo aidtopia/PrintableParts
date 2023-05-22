@@ -19,10 +19,98 @@ Include_Drive_Gear = true;
 Include_Spool_Assembly = true;
 Include_Ceiling_Bracket = true;
 
+module __Customizer_Limit__ () {}
+
 use <aidgear.scad>
 
 function inch(x) = x * 25.4;
 function thou(x) = inch(x/1000);
+
+m3_free_d = 3.6;
+m3_head_d = 6.0;
+m3_flange_d = 7.0;
+m3_flange_h = 0.7;
+m4_free_d = 4.5;
+m4_head_d = 8.0;
+m4_head_h = 3.1;
+m5_free_d = 5.5;
+m5_head_d = 10;
+no6_free_d = thou(149.5);
+no6_head_d = thou(262);
+no6_sink_h = thou(83);
+    
+// Key dimensions for "reindeer" motors like those sold by
+// FrightProps and MonsterGuts.
+deer_shaft_d = 7.0;
+deer_shaft_af = 5.5;  // across flats
+deer_shaft_h = 6.2;
+deer_shaft_screw = "M4";  // machine screw
+deer_shaft_screw_l = 10;
+deer_base_d = 21;  // at the face plate.  Tapers down to 17.
+deer_base_h = 5;
+deer_mounting_screw = "M3 self-tapping";  // a #6 would fit
+deer_mounting_screw_l = 12;
+deer_mount_dx1 = 81;  // separation between mounting screws nearest the hub
+deer_mount_dx2 = 57;
+deer_mount_dy1 = 17; // hub to dx1 line
+deer_mount_dy2 = 35 + deer_mount_dy1; // hub to dx2 line
+deer_w = 90;
+deer_l = 90;
+deer_h = 37.6;
+
+module deer_motor_spline(h=1, nozzle_d=0.4) {
+    // The shaft of the deer motor is a cylinder with two flattened
+    // faces.
+    shaped_h = min(h, deer_shaft_h);
+    linear_extrude(shaped_h, convexity=10) {
+        intersection() {
+            circle(d=deer_shaft_d+nozzle_d/2);
+            square([deer_shaft_d+nozzle_d/2, deer_shaft_af+nozzle_d/2],
+                   center=true);
+        }
+    }
+    // If the desired height is taller than the shaft itself, we'll
+    // cap the flattened portion so there's something to tighten the
+    // hub screw against.
+    passthru_h = min(h-shaped_h, 2);
+    if (passthru_h > 0) {
+        translate([0, 0, shaped_h-0.1]) {
+            linear_extrude(passthru_h+0.2, convexity=10) {
+                circle(d=m4_free_d+nozzle_d, $fs=nozzle_d/2);
+            }
+        }
+        // If there's still more height, we'll make a simple hole to
+        // recess the head of the hub screw.
+        remainder_h = h - shaped_h - passthru_h;
+        if (remainder_h > 0) {
+            translate([0, 0, shaped_h + passthru_h]) {
+                linear_extrude(remainder_h+0.1, convexity=10) {
+                    circle(d=m4_head_d+nozzle_d, $fs=nozzle_d/2);
+                }
+            }
+        }
+    }
+}
+
+module deer_motor_mounts(th, nozzle_d=0.4) {
+    // Cutout for the hub.
+    cylinder(h=th+0.1, d=deer_base_d+nozzle_d, center=true);
+    
+    // Mounting bolt holes.
+    mounting_holes = [
+        [-deer_mount_dx1/2, -deer_mount_dy1],
+        [ deer_mount_dx1/2, -deer_mount_dy1],
+        [-deer_mount_dx2/2, -deer_mount_dy2],
+        [ deer_mount_dx2/2, -deer_mount_dy2]
+    ];
+
+    d = max(m3_head_d + nozzle_d, m3_flange_d);
+    for_each_position(mounting_holes) {
+        cylinder(h=th+0.1, d=m3_free_d, center=true, $fs=nozzle_d/2);
+        translate([0, 0, 2])
+            cylinder(h=th, d=d, center=true, $fs=nozzle_d/2);
+    }
+}
 
 function corners(l, w, r, center=false) =
     let(
@@ -72,47 +160,8 @@ module circular_arrow(r, theta0=0, theta1=360, th=1) {
 }
 
 module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
-    m3_free_d = 3.6;
-    m3_head_d = 6.0;
-    m3_flange_d = 7.0;
-    m3_flange_h = 0.7;
-    m4_free_d = 4.5;
-    m4_head_d = 8.0;
-    m4_head_h = 3.1;
-    m5_free_d = 5.5;
-    m5_head_d = 10;
-    no6_free_d = thou(149.5);
-    no6_head_d = thou(262);
-    no6_sink_h = thou(83);
-    
     string_d = 2;
 
-    // Key dimensions for "reindeer" motors like those sold by
-    // FrightProps and MonsterGuts.
-    deer_shaft_d = 7.0;
-    deer_shaft_af = 5.5;  // across flats
-    deer_shaft_h = 6.2;
-    deer_shaft_screw = "M4";  // machine screw
-    deer_shaft_screw_l = 10;
-    deer_base_d = 21;  // at the face plate.  Tapers down to 17.
-    deer_base_h = 5;
-    deer_mounting_screw = "M3 self-tapping";  // a #6 would fit
-    deer_mounting_screw_l = 12;
-    deer_mount_dx1 = 81;  // separation between mounting screws nearest the hub
-    deer_mount_dx2 = 57;
-    deer_mount_dy1 = 17; // hub to dx1 line
-    deer_mount_dy2 = 35 + deer_mount_dy1; // hub to dx2 line
-    deer_w = 90;
-    deer_l = 90;
-    deer_h = 37.6;
-    
-    deer_motor_mounting_holes = [
-        [-deer_mount_dx1/2, -deer_mount_dy1],
-        [ deer_mount_dx1/2, -deer_mount_dy1],
-        [-deer_mount_dx2/2, -deer_mount_dy2],
-        [ deer_mount_dx2/2, -deer_mount_dy2]
-    ];
-    
     // We make the gears thick enough to completely cover the motor shaft
     // and have a cap for the hub screw to hold.  To recess the head of
     // the hub screw, also add m4_head_h.  But that makes both gears
@@ -164,58 +213,11 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
     bracket_l = deer_h;
     bracket_r = plate_r;
 
-    module deer_motor_spline(h=1) {
-        // The shaft of the deer motor is a cylinder with two flattened
-        // faces.
-        shaped_h = min(h, deer_shaft_h);
-        linear_extrude(shaped_h, convexity=10) {
-            intersection() {
-                circle(d=deer_shaft_d+nozzle_d/2);
-                square([deer_shaft_d+nozzle_d/2, deer_shaft_af+nozzle_d/2],
-                       center=true);
-            }
-        }
-        // If the desired height is taller than the shaft itself, we'll
-        // cap the flattened portion so there's something to tighten the
-        // hub screw against.
-        passthru_h = min(h-shaped_h, 2);
-        if (passthru_h > 0) {
-            translate([0, 0, shaped_h-0.1]) {
-                linear_extrude(passthru_h+0.2, convexity=10) {
-                    circle(d=m4_free_d+nozzle_d, $fs=nozzle_d/2);
-                }
-            }
-            // If there's still more height, we'll make a simple hole to
-            // recess the head of the hub screw.
-            remainder_h = h - shaped_h - passthru_h;
-            if (remainder_h > 0) {
-                translate([0, 0, shaped_h + passthru_h]) {
-                    linear_extrude(remainder_h+0.1, convexity=10) {
-                        circle(d=m4_head_d+nozzle_d, $fs=nozzle_d/2);
-                    }
-                }
-            }
-        }
-    }
-
-    module deer_motor_mounts() {
-        // Cutout for the hub.
-        cylinder(h=plate_th+0.1, d=deer_base_d+nozzle_d, center=true);
-        
-        // Mounting bolt holes.
-        d = max(m3_head_d + nozzle_d, m3_flange_d);
-        for_each_position(deer_motor_mounting_holes) {
-            cylinder(h=plate_th+0.1, d=m3_free_d, center=true, $fs=nozzle_d/2);
-            translate([0, 0, 2])
-                cylinder(h=plate_th, d=d, center=true, $fs=nozzle_d/2);
-        }
-    }
-
     module drive_gear() {
         difference() {
             AG_gear(drive, first_tooth=1, last_tooth=actual_drive_teeth);
             translate([0, 0, -0.1])
-                deer_motor_spline(h=AG_thickness(drive)+0.1);
+                deer_motor_spline(AG_thickness(drive)+0.1, nozzle_d=nozzle_d);
             translate([0, 0, AG_thickness(drive)])
                 linear_extrude(1, center=true)
                     circular_arrow(0.35*AG_tips_diameter(drive), 160, 20);
@@ -346,7 +348,7 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
             }
 
             translate([dx/2, 0, 0]) {
-                rotate([0, 0, -90]) deer_motor_mounts();
+                rotate([0, 0, -90]) deer_motor_mounts(plate_th, nozzle_d);
                 translate([0, 0, plate_th/2 - spacer_h]) {
                     linear_extrude(spacer_h+0.1, convexity=6) {
                         difference() {
