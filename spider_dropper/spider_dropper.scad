@@ -218,7 +218,7 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
                 deer_motor_spline(h=AG_thickness(drive)+0.1);
             translate([0, 0, AG_thickness(drive)])
                 linear_extrude(1, center=true)
-                    circular_arrow(0.40*AG_tips_diameter(drive), 160, 20);
+                    circular_arrow(0.35*AG_tips_diameter(drive), 160, 20);
         }
     }
    
@@ -273,7 +273,7 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
                 pocket();
                 translate([0, 0, spool_h-spacer_h])
                     linear_extrude(2, convexity=6, center=true)
-                        circular_arrow(0.4*spool_flange_d, 100, 260);
+                        circular_arrow(0.35*spool_flange_d, 100, 260);
             }
         }
         
