@@ -14,6 +14,9 @@ Drop_Distance = 24; // [1:100]
 // Units for Drop Distance.
 Drop_Distance_Units = "inch"; // ["inch", "mm", "cm"]
 
+// Select your motor type.  The FrightProps and MonsterGuts motors are identical. Other deer motors will work only if they always turn clockwise."
+Motor = "MonsterGuts Mini-Motor"; // ["FrightProps Deer Motor", "MonsterGuts Mini-Motor", "Aslong JGY-370 12 VDC Worm Gearmotor"]
+
 Include_Base_Plate = true;
 Include_Drive_Gear = true;
 Include_Spool_Assembly = true;
@@ -28,6 +31,7 @@ function thou(x) = inch(x/1000);
 
 m3_free_d = 3.6;
 m3_head_d = 6.0;
+m3_head_h = 2.4;
 m3_flange_d = 7.0;
 m3_flange_h = 0.7;
 m4_free_d = 4.5;
@@ -66,7 +70,7 @@ jgy_shaft_d = 6.0;
 jgy_shaft_flat = 0.5;
 jgy_shaft_h = 12.5;
 jgy_shaft_screw = "M3";  // machine screw
-jgy_shaft_screw_l = 7;
+jgy_shaft_screw_l = 8;
 jgy_base_d = 8.0;
 jgy_base_h = 1.5;
 jgy_mounting_screw = "M3";
@@ -115,7 +119,7 @@ module deer_motor_spline(h=1, nozzle_d=0.4) {
 
 module deer_motor_mounts(th, nozzle_d=0.4) {
     translate([0, 0, -0.1]) {
-        // Cutout for the hub.
+        // Cutout for the hub base.
         cylinder(h=th+0.2, d=deer_base_d+nozzle_d);
         
         // Mounting bolt holes.
@@ -130,6 +134,28 @@ module deer_motor_mounts(th, nozzle_d=0.4) {
         for_each_position(mounting_holes) {
             cylinder(h=th+0.1, d=m3_free_d, $fs=nozzle_d/2);
             translate([0, 0, 2+0.1])
+                cylinder(h=th, d=d, $fs=nozzle_d/2);
+        }
+    }
+}
+
+module jgy_motor_mounts(th, nozzle_d=0.4) {
+    translate([0, 0, -0.1]) {
+        // Cutout for the hub.
+        cylinder(h=th+0.2, d=jgy_base_d+nozzle_d);
+
+        // Mounting bolt holes.
+        mounting_holes = [
+            [-jgy_mount_dx1/2, -jgy_mount_dy1],
+            [ jgy_mount_dx1/2, -jgy_mount_dy1],
+            [-jgy_mount_dx2/2, -jgy_mount_dy2],
+            [ jgy_mount_dx2/2, -jgy_mount_dy2]
+        ];
+
+        d = m3_head_d + nozzle_d;
+        for_each_position(mounting_holes) {
+            cylinder(h=th+0.1, d=m3_free_d, $fs=nozzle_d/2);
+            translate([0, 0, th-m3_head_h+0.1])
                 cylinder(h=th, d=d, $fs=nozzle_d/2);
         }
     }
@@ -182,7 +208,7 @@ module circular_arrow(r, theta0=0, theta1=360, th=1) {
     ]);
 }
 
-module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
+module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
     string_d = 2;
 
     // We make the gears thick enough to completely cover the motor shaft
@@ -370,16 +396,21 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
                 }
             }
 
-            rotate([0, 0, -90]) deer_motor_mounts(plate_th, nozzle_d);
+            if (motor == "deer") {
+                rotate([0, 0, -90]) deer_motor_mounts(plate_th, nozzle_d);
 
-            // Small recess for extra clearance for drive gear.
-            translate([0, 0, plate_th - spacer_h]) {
-                linear_extrude(spacer_h+0.1, convexity=6) {
-                    difference() {
-                        circle(d=AG_tips_diameter(drive));
-                        circle(d=deer_base_d+plate_th);
+                // Small recess for extra clearance for drive gear.
+                translate([0, 0, plate_th - spacer_h]) {
+                    linear_extrude(spacer_h+0.1, convexity=6) {
+                        difference() {
+                            circle(d=AG_tips_diameter(drive));
+                            circle(d=deer_base_d+plate_th);
+                        }
                     }
                 }
+            }
+            if (motor == "jgy") {
+                rotate([0, 0, -90]) jgy_motor_mounts(plate_th, nozzle_d);
             }
 
             translate([AG_tips_diameter(drive)/2-plate_r, 0, 0])
@@ -474,6 +505,83 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
         r = show_assembled ? [0, 0, 0] : [0, 90, 0];
         translate(t) rotate(r) ceiling_bracket();
     }
+    
+    echo(str(
+        "\nPRINTING INSTRUCTIONS\n",
+        "\nExport the model and slice it with a 0.2 mm or 0.3 mm layer\n",
+        "height using at least 3 perimeters.  Print it with your choice\n",
+        "of material.  It's been tested with PLA and PETG.\n"
+    ));
+    
+    if (motor == "deer") {
+        echo(str(
+            "\nASSEMBLY INSTRUCTIONS\n",
+            "\nUnscrew the arm from the motor shaft. Keep the hub\n",
+            "screw. If you need to replace it, use an M4 x 10 mm\n",
+            "machine screw.\n",
+            "\nUnscrew the four elevated screws from the perimeter\n",
+            "of the motor housing. Those are M3 x 10 mm self-tapping\n",
+            "screws.\n",
+            "\nAttach the motor to the back of the plate with the\n",
+            "shaft poking through the center of the large hole.  You\n",
+            "can re-use the perimeter screws or substitute longer\n",
+            "ones. I used M3 x 16 mm self-tapping screws with flanges\n",
+            "just under the heads.\n",
+            "\nAlign the shaped hole on the drive gear with the end of\n",
+            "the motor shaft and press it into place. The clockwise\n",
+            "arrow should be facing away from the plate. Secure the\n",
+            "gear with the M4 hub screw you removed at the beginning.\n",
+            "\nTest the motor by applying power and making sure the\n",
+            "gear turns clockwise, as indicated by the arrow, and that\n",
+            "it doesn't rub against the plate. If the gear turns\n",
+            "counterclockwise or if it changes direction when the\n",
+            "motion is impeded, it will not work with this design.\n"
+        ));
+    }
+    if (motor == "jgy") {
+        echo(str(
+            "\nASSEMBLY INSTRUCTIONS\n",
+            "\nAttach the motor to the back of the plate with the\n",
+            "shaft poking through the largest hole. Secure the motor\n",
+            "with four M3 x 6 mm machine screws. If the shaft isn't\n",
+            "quite at right angles to the plate, you can make small\n",
+            "adjustments by shimming the motor with bits of paper.\n",
+            "\nAlign the shaped hole on the drive gear with the end of\n",
+            "the motor shaft and press it into place. The clockwise\n",
+            "arrow should be facing away from the plate. Secure the\n",
+            "gear with an M3 x 10mm machine screw.\n",
+            "\nTest the motor by applying power and making sure the\n",
+            "gear turns clockwise, as indicated by the arrow, and that\n",
+            "it doesn't rub against the plate. If the gear turns\n",
+            "counterclockwise, switch the wires connected to the motor\n",
+            "and test again.\n"
+        ));
+    }
+
+    echo(str(
+        "\nFeed the end of the string through the small hole in the\n",
+        "guide on the plate.  Then feed the same end through the small\n",
+        "hole in the groove of the spool.  It will emerge in the recess\n",
+        "with the little post.  Pull enough through that you can tie a\n",
+        "small loop in the string.  Draw out the slack so that the loop\n",
+        "goes around the post.\n",
+        "\nHold the spool assembly with the gear section over the head\n",
+        "of the plastic axle on the plate. The arrow should be facing\n",
+        "away from the plate.\n",
+        "\nTurn on the motor. When the toothless portion of the drive\n",
+        "gear comes around, you should be able to press the spool\n",
+        "assembly all the way down the axle. When the teeth come around\n",
+        "the spool should begin winding up the string. Apply a little\n",
+        "resistance to the string below the guide, so that it wraps\n",
+        "around the spool evenly.  When the toothless portion arrives\n",
+        "again, you should be able to pull the string and it will\n",
+        "unspool.  Repeat until you have a feel for the drop distance.\n",
+        "\nTurn off the motor.  Attach your prop to the string at the\n",
+        "drop distance below the guide.\n",
+        "\nYour prop should not weight more than 1 pound (about 0.5 kg).\n",
+        "\nEnsure the string doesn't get tangled or wrapped around the\n",
+        "prop when it drops.\n"
+    ));
 }
 
 drop_distance =
@@ -481,4 +589,9 @@ drop_distance =
     Drop_Distance_Units == "mm"   ? Drop_Distance :
     Drop_Distance_Units == "cm"   ? 10*Drop_Distance : Drop_Distance;
 
-spider_dropper(drop_distance=drop_distance);
+motor =
+    Motor == "FrightProps Deer Motor" ? "deer" :
+    Motor == "MonsterGuts Mini-Motor" ? "deer" :
+    Motor == "Aslong JGY-370 12 VDC Worm Gearmotor" ? "jgy" : "none";
+
+spider_dropper(drop_distance=drop_distance, motor=motor);
