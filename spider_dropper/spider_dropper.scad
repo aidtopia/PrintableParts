@@ -93,22 +93,24 @@ module deer_motor_spline(h=1, nozzle_d=0.4) {
 }
 
 module deer_motor_mounts(th, nozzle_d=0.4) {
-    // Cutout for the hub.
-    cylinder(h=th+0.1, d=deer_base_d+nozzle_d, center=true);
-    
-    // Mounting bolt holes.
-    mounting_holes = [
-        [-deer_mount_dx1/2, -deer_mount_dy1],
-        [ deer_mount_dx1/2, -deer_mount_dy1],
-        [-deer_mount_dx2/2, -deer_mount_dy2],
-        [ deer_mount_dx2/2, -deer_mount_dy2]
-    ];
+    translate([0, 0, -0.1]) {
+        // Cutout for the hub.
+        cylinder(h=th+0.2, d=deer_base_d+nozzle_d);
+        
+        // Mounting bolt holes.
+        mounting_holes = [
+            [-deer_mount_dx1/2, -deer_mount_dy1],
+            [ deer_mount_dx1/2, -deer_mount_dy1],
+            [-deer_mount_dx2/2, -deer_mount_dy2],
+            [ deer_mount_dx2/2, -deer_mount_dy2]
+        ];
 
-    d = max(m3_head_d + nozzle_d, m3_flange_d);
-    for_each_position(mounting_holes) {
-        cylinder(h=th+0.1, d=m3_free_d, center=true, $fs=nozzle_d/2);
-        translate([0, 0, 2])
-            cylinder(h=th, d=d, center=true, $fs=nozzle_d/2);
+        d = max(m3_head_d + nozzle_d, m3_flange_d);
+        for_each_position(mounting_holes) {
+            cylinder(h=th+0.1, d=m3_free_d, $fs=nozzle_d/2);
+            translate([0, 0, 2+0.1])
+                cylinder(h=th, d=d, $fs=nozzle_d/2);
+        }
     }
 }
 
@@ -196,8 +198,8 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
     spacer_h = 2*nozzle_d;
 
     plate_th = deer_base_h - spacer_h;
-    plate_l = plate_th + spool_flange_d/2 + dx + AG_tips_diameter(drive)/2;
-    plate_offset = (AG_tips_diameter(drive) - spool_flange_d)/4;
+    plate_l = plate_th/2 + AG_tips_diameter(drive)/2 + dx + spool_flange_d/2 + plate_th/2;
+    plate_offset = -plate_l/2 + plate_th/2 + AG_tips_diameter(drive)/2;
     plate_w = max(AG_tips_diameter(drive), spool_d, deer_w) + 1;
     plate_r = 10;
 
@@ -337,29 +339,29 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
         }
 
         difference() {
-            translate([plate_offset, 0, 0]) {
-                c = corners(plate_l, plate_w, plate_r, center=true);
+            translate([plate_offset, 0, plate_th/2]) {
                 linear_extrude(plate_th, convexity=8, center=true) {
                     difference() {
+                        c = corners(plate_l, plate_w, plate_r, center=true);
                         hull() for_each_position(c) circle(r=plate_r);
                         for_each_position(c) circle(d=m5_free_d+nozzle_d);
                     }
                 }
             }
 
-            translate([dx/2, 0, 0]) {
-                rotate([0, 0, -90]) deer_motor_mounts(plate_th, nozzle_d);
-                translate([0, 0, plate_th/2 - spacer_h]) {
-                    linear_extrude(spacer_h+0.1, convexity=6) {
-                        difference() {
-                            circle(d=AG_tips_diameter(drive));
-                            circle(d=deer_base_d+plate_th);
-                        }
+            rotate([0, 0, -90]) deer_motor_mounts(plate_th, nozzle_d);
+
+            // Small recess for extra clearance for drive gear.
+            translate([0, 0, plate_th - spacer_h]) {
+                linear_extrude(spacer_h+0.1, convexity=6) {
+                    difference() {
+                        circle(d=AG_tips_diameter(drive));
+                        circle(d=deer_base_d+plate_th);
                     }
                 }
             }
 
-            translate([plate_offset+plate_l/2-plate_r-m5_free_d/2, 0, -plate_th/2+0.5])
+            translate([AG_tips_diameter(drive)/2-plate_r, 0, 0])
                 rotate([0, 0, -90])
                     linear_extrude(1, center=true, convexity=10)
                         mirror([1, 0, 0])
@@ -367,10 +369,11 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
                                  halign="center", valign="baseline");
         }
 
-        translate([-dx/2, 0, plate_th/2-0.1]) axle();
-
-        translate([-(dx+spool_flange_d)/2, -spool_d/2, -plate_th/2])
+        translate([-dx, 0, plate_th-0.1]) {
+            axle();
+            translate([-spool_flange_d/2, -spool_d/2, 0])
             rotate([0, 0, 90]) guide();
+        }
     }
     
     module ceiling_bracket() {
@@ -426,22 +429,19 @@ module spider_dropper(drop_distance=inch(24), nozzle_d=0.4) {
     
     show_assembled = $preview;
     
-    if (Include_Base_Plate) {
-        t = [0, 0, plate_th/2];
-        translate(t) plate();
-    }
+    if (Include_Base_Plate) plate();
 
     if (Include_Drive_Gear) {
         t = show_assembled ?
-            [dx/2, 0, plate_th + spacer_h] :
-            [AG_tips_diameter(drive)/2+1, (plate_w+AG_tips_diameter(drive))/2+1, 0];
+            [0, 0, plate_th + spacer_h] :
+            [plate_offset+AG_tips_diameter(drive)/2+1, (plate_w+AG_tips_diameter(drive))/2+1, 0];
         translate(t) drive_gear();
     }
 
     if (Include_Spool_Assembly) {
         t = show_assembled ?
-            [-dx/2, 0, plate_th + spacer_h] :
-            [-(spool_flange_d+2)/2, (plate_w+spool_flange_d)/2+1, spool_h+AG_thickness(winder)];
+            [-dx, 0, plate_th + spacer_h] :
+            [plate_offset-(spool_flange_d+2)/2, (plate_w+spool_flange_d)/2+1, spool_h+AG_thickness(winder)];
         r = show_assembled ? [0, 0, 0] : [180, 0, 0];
         translate(t) rotate(r) spool_assembly();
     }
