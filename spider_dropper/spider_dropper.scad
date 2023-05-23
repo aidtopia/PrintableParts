@@ -39,13 +39,16 @@ no6_free_d = thou(149.5);
 no6_head_d = thou(262);
 no6_sink_h = thou(83);
     
-// Key dimensions for "reindeer" motors like those sold by
-// FrightProps and MonsterGuts.
+// Key dimensions for "reindeer" motors like those sold by FrightProps
+// and MonsterGuts.  These are 5-6 RPM synchronous AC motors in a weather
+// resistant housing.
 deer_shaft_d = 7.0;
 deer_shaft_af = 5.5;  // across flats
 deer_shaft_h = 6.2;
 deer_shaft_screw = "M4";  // machine screw
 deer_shaft_screw_l = 10;
+// The base is a circular area around the shaft that rises above the
+// mounting face of the motor.
 deer_base_d = 21;  // at the face plate.  Tapers down to 17.
 deer_base_h = 5;
 deer_mounting_screw = "M3 self-tapping";  // a #6 would fit
@@ -57,6 +60,24 @@ deer_mount_dy2 = 35 + deer_mount_dy1; // hub to dx2 line
 deer_w = 90;
 deer_l = 90;
 deer_h = 37.6;
+
+// Key dimensions for the Aslong JGY-370 DC gearmotors (and look alikes).
+jgy_shaft_d = 6.0;
+jgy_shaft_flat = 0.5;
+jgy_shaft_h = 12.5;
+jgy_shaft_screw = "M3";  // machine screw
+jgy_shaft_screw_l = 7;
+jgy_base_d = 8.0;
+jgy_base_h = 1.5;
+jgy_mounting_screw = "M3";
+jgy_mounting_screw_l = 4;
+jgy_mount_dx1 = 18;
+jgy_mount_dx2 = 18;
+jgy_mount_dy1 = -9;
+jgy_mount_dy2 = 33 + jgy_mount_dy1;
+jgy_w = 32;
+jgy_l = 81;
+jgy_h = 27;
 
 module deer_motor_spline(h=1, nozzle_d=0.4) {
     // The shaft of the deer motor is a cylinder with two flattened
