@@ -14,7 +14,7 @@ Drop_Distance = 24; // [1:100]
 // Units for Drop Distance.
 Drop_Distance_Units = "inch"; // ["inch", "mm", "cm"]
 
-// Select your motor type.  The FrightProps and MonsterGuts motors are identical. Other deer motors will work only if they always turn clockwise."
+// Select your motor type.  The FrightProps and MonsterGuts motors are identical. Other deer motors will work only if they always turn clockwise.
 Motor = "MonsterGuts Mini-Motor"; // ["FrightProps Deer Motor", "MonsterGuts Mini-Motor", "Aslong JGY-370 12 VDC Worm Gearmotor"]
 
 Include_Base_Plate = true;
@@ -71,7 +71,7 @@ jgy_shaft_flat = 0.5;
 jgy_shaft_h = 12.5;
 jgy_shaft_screw = "M3";  // machine screw
 jgy_shaft_screw_l = 8;
-jgy_base_d = 8.0;
+jgy_base_d = 13.2;
 jgy_base_h = 1.5;
 jgy_mounting_screw = "M3";
 jgy_mounting_screw_l = 4;
@@ -87,30 +87,32 @@ module deer_motor_spline(h=1, nozzle_d=0.4) {
     // The shaft of the deer motor is a cylinder with two flattened
     // faces.
     shaped_h = min(h, deer_shaft_h);
-    linear_extrude(shaped_h, convexity=10) {
-        intersection() {
-            circle(d=deer_shaft_d+nozzle_d/2);
-            square([deer_shaft_d+nozzle_d/2, deer_shaft_af+nozzle_d/2],
-                   center=true);
-        }
-    }
-    // If the desired height is taller than the shaft itself, we'll
-    // cap the flattened portion so there's something to tighten the
-    // hub screw against.
-    passthru_h = min(h-shaped_h, 2);
-    if (passthru_h > 0) {
-        translate([0, 0, shaped_h-0.1]) {
-            linear_extrude(passthru_h+0.2, convexity=10) {
-                circle(d=m4_free_d+nozzle_d, $fs=nozzle_d/2);
+    translate([0, 0, -0.1]) {
+        linear_extrude(shaped_h+0.2, convexity=10) {
+            intersection() {
+                circle(d=deer_shaft_d+nozzle_d/2, $fs=nozzle_d/2);
+                square([deer_shaft_d+nozzle_d/2, deer_shaft_af+nozzle_d/2],
+                       center=true);
             }
         }
-        // If there's still more height, we'll make a simple hole to
-        // recess the head of the hub screw.
-        remainder_h = h - shaped_h - passthru_h;
-        if (remainder_h > 0) {
-            translate([0, 0, shaped_h + passthru_h]) {
-                linear_extrude(remainder_h+0.1, convexity=10) {
-                    circle(d=m4_head_d+nozzle_d, $fs=nozzle_d/2);
+        // If the desired height is taller than the shaft itself, we'll
+        // cap the flattened portion so there's something to tighten the
+        // hub screw against.
+        passthru_h = min(h-shaped_h, 2);
+        if (passthru_h > 0) {
+            translate([0, 0, shaped_h]) {
+                linear_extrude(passthru_h+0.2, convexity=10) {
+                    circle(d=m4_free_d+nozzle_d, $fs=nozzle_d/2);
+                }
+            }
+            // If there's still more height, we'll make a simple hole to
+            // recess the head of the hub screw.
+            remainder_h = h - shaped_h - passthru_h;
+            if (remainder_h > 0) {
+                translate([0, 0, shaped_h + passthru_h]) {
+                    linear_extrude(remainder_h+0.2, convexity=10) {
+                        circle(d=m4_head_d+nozzle_d, $fs=nozzle_d/2);
+                    }
                 }
             }
         }
@@ -139,9 +141,44 @@ module deer_motor_mounts(th, nozzle_d=0.4) {
     }
 }
 
+module jgy_motor_spline(h=1, nozzle_d=0.4) {
+    translate([0, 0, -0.1]) {
+        // The shaft of the JGY motor has one flattened side.
+        shaped_h = min(h, jgy_shaft_h);
+        linear_extrude(shaped_h+0.2, convexity=10) {
+            intersection() {
+                circle(d=jgy_shaft_d+nozzle_d/2, $fs=nozzle_d/2);
+                translate([jgy_shaft_flat, 0, 0])
+                    square(jgy_shaft_d+nozzle_d/2, center=true);
+            }
+        }
+        // If the desired height is taller than the shaft itself, we'll
+        // cap the flattened portion so there's something to tighten the
+        // hub screw against.
+        passthru_h = min(h-shaped_h, 2);
+        if (passthru_h > 0) {
+            translate([0, 0, shaped_h]) {
+                linear_extrude(passthru_h+0.2, convexity=10) {
+                    circle(d=m4_free_d+nozzle_d, $fs=nozzle_d/2);
+                }
+            }
+            // If there's still more height, we'll make a simple hole to
+            // recess the head of the hub screw.
+            remainder_h = h - shaped_h - passthru_h;
+            if (remainder_h > 0) {
+                translate([0, 0, shaped_h + passthru_h]) {
+                    linear_extrude(remainder_h+2, convexity=10) {
+                        circle(d=m4_head_d+nozzle_d, $fs=nozzle_d/2);
+                    }
+                }
+            }
+        }
+    }
+}
+
 module jgy_motor_mounts(th, nozzle_d=0.4) {
     translate([0, 0, -0.1]) {
-        // Cutout for the hub.
+        // Cutout for the hub base.
         cylinder(h=th+0.2, d=jgy_base_d+nozzle_d);
 
         // Mounting bolt holes.
@@ -211,11 +248,17 @@ module circular_arrow(r, theta0=0, theta1=360, th=1) {
 module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
     string_d = 2;
 
+    spacer_h = 2*nozzle_d;
+    plate_th = deer_base_h - spacer_h;
+
     // We make the gears thick enough to completely cover the motor shaft
     // and have a cap for the hub screw to hold.  To recess the head of
     // the hub screw, also add m4_head_h.  But that makes both gears
     // thicker, using more plastic and more printing time.
-    gear_th = deer_shaft_h + 2 ; //+ m4_head_h;
+    gear_th =
+        (motor == "deer") ? deer_shaft_h - (plate_th+spacer_h) + deer_base_h + 2 : //+ m4_head_h;
+        (motor == "jgy")  ? jgy_shaft_h - (plate_th+spacer_h) + jgy_base_h + 1
+                          : 8;                            
 
     // The drive gear is connected directly to the motor shaft.  It has
     // teeth 3/4 of the way around, and is toothless on the remaining
@@ -242,9 +285,6 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
     spool_h = 10;
     
     spacer_d = AG_tips_diameter(winder);
-    spacer_h = 2*nozzle_d;
-
-    plate_th = deer_base_h - spacer_h;
     plate_l = plate_th/2 + AG_tips_diameter(drive)/2 + dx + spool_flange_d/2 + plate_th/2;
     plate_offset = -plate_l/2 + plate_th/2 + AG_tips_diameter(drive)/2;
     plate_w = max(AG_tips_diameter(drive), spool_d, deer_w) + 1;
@@ -255,7 +295,7 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
     assert(axle_d < AG_root_diameter(winder));
 
     guide_w = min(plate_r, 4*string_d);
-    guide_h = axle_l + plate_th - spool_h/2;
+    guide_h = axle_l - spool_h/2;
     guide_d = string_d + nozzle_d;
 
     bracket_w = plate_w;
@@ -265,8 +305,16 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
     module drive_gear() {
         difference() {
             AG_gear(drive, first_tooth=1, last_tooth=actual_drive_teeth);
-            translate([0, 0, -0.1])
-                deer_motor_spline(AG_thickness(drive)+0.1, nozzle_d=nozzle_d);
+            gear_offset = plate_th + spacer_h;
+            if (motor == "deer") {
+                translate([0, 0, deer_base_h-gear_offset])
+                    deer_motor_spline(gear_offset-deer_base_h+AG_thickness(drive), nozzle_d=nozzle_d);
+            }
+            if (motor == "jgy") {
+                translate([0, 0, jgy_base_h-gear_offset])
+                    jgy_motor_spline(gear_offset-jgy_base_h+AG_thickness(drive), nozzle_d=nozzle_d);
+            }
+        
             translate([0, 0, AG_thickness(drive)])
                 linear_extrude(1, center=true)
                     circular_arrow(0.35*AG_tips_diameter(drive), 160, 20);
@@ -368,17 +416,19 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
         }
         
         module guide() {
-            rotate([90, 0, 0]) linear_extrude(plate_th) {
-                difference() {
-                    hull() {
-                        translate([-guide_w/2, 0]) square([guide_w, plate_th]);
-                        translate([0, guide_h]) circle(d=guide_w);
-                    }
-                    translate([0, guide_h]) {
+            translate([0, 0, -0.1]) rotate([90, 0, 0]) {
+                linear_extrude(plate_th) {
+                    difference() {
                         hull() {
-                            circle(d=guide_d);
-                            translate([0, string_d/4]) rotate([0, 0, 45])
-                                square(guide_d*cos(45), center=true);
+                            translate([-guide_w/2, 0]) square([guide_w, plate_th]);
+                            translate([0, guide_h+0.1]) circle(d=guide_w);
+                        }
+                        translate([0, guide_h+0.1]) {
+                            hull() {
+                                circle(d=guide_d);
+                                translate([0, string_d/4]) rotate([0, 0, 45])
+                                    square(guide_d*cos(45), center=true);
+                            }
                         }
                     }
                 }
@@ -421,7 +471,7 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
                                  halign="center", valign="baseline");
         }
 
-        translate([-dx, 0, plate_th-0.1]) {
+        translate([-dx, 0, plate_th]) {
             axle();
             translate([-spool_flange_d/2, -spool_d/2, 0])
             rotate([0, 0, 90]) guide();
@@ -578,7 +628,7 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
         "unspool.  Repeat until you have a feel for the drop distance.\n",
         "\nTurn off the motor.  Attach your prop to the string at the\n",
         "drop distance below the guide.\n",
-        "\nYour prop should not weight more than 1 pound (about 0.5 kg).\n",
+        "\nYour prop should not weigh more than 1 pound (about 0.5 kg).\n",
         "\nEnsure the string doesn't get tangled or wrapped around the\n",
         "prop when it drops.\n"
     ));
