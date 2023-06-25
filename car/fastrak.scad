@@ -15,11 +15,12 @@ module foldup_etag_bracket(th=2, layer_h=0.2, nozzle_d=0.4) {
     bracket_w = etag_l/2;
 
     box_h = th + etag_w + 2*th + etag_h + 2*th + etag_w + 2*th + etag_h;
-    tab_w = hanger_d/3;
+    tab_w = hanger_d/2;
     tab_h = th;
     tab_l = 2*th;
     slot_w = tab_w + nozzle_d/2;
     slot_h = tab_h + nozzle_d/2;
+    slot_dx = bracket_w/4;
 
     $fs = nozzle_d/2;
     
@@ -27,10 +28,33 @@ module foldup_etag_bracket(th=2, layer_h=0.2, nozzle_d=0.4) {
 
         module cutout() {
             ellipse_major = etag_w-2*th;
-            ellipse_minor = 24;  // based on logo and switch placement
+            ellipse_minor = min(ellipse_major, bracket_w-2*th);
             translate([0, -etag_w/2])
                 scale([1, ellipse_major/ellipse_minor])
                     circle(d=ellipse_minor);
+        }
+        
+        module tab() {
+            //square([tab_w, tab_l], center=true);
+            depth = -(tab_h + nozzle_d/2);
+            stem = 3*nozzle_d;
+            overhang = 3*nozzle_d;
+            clip_profile = [
+                [0, 0],
+                [0, depth],
+                [overhang, depth],
+                [-nozzle_d, depth-overhang],
+                [-stem, depth-overhang],
+                [-stem, 0]
+            ];
+            translate([ tab_w/2, 0]) polygon(clip_profile);
+            translate([-tab_w/2, 0]) mirror([1, 0, 0]) polygon(clip_profile);
+            translate([0, -tab_h/2]) square([tab_w/2, 2*tab_h+overhang], center=true);
+        }
+        
+        module slot() {
+            translate([0, -slot_h/2])
+                square([slot_w, slot_h], center=true);
         }
 
         difference() {
@@ -40,8 +64,10 @@ module foldup_etag_bracket(th=2, layer_h=0.2, nozzle_d=0.4) {
                     translate([0, -box_h/2])
                         square([bracket_w, box_h], center=true);
                 }
-                translate([0, -(box_h+tab_l/2)])
-                    square([tab_w, tab_l], center=true);
+                translate([0, -box_h]) {
+                    translate([-slot_dx, 0]) tab();
+                    translate([ slot_dx, 0]) tab();
+                }
             }
             translate([0, keyhole_h]) {
                 hull() {
@@ -50,8 +76,8 @@ module foldup_etag_bracket(th=2, layer_h=0.2, nozzle_d=0.4) {
                 }
                 translate([0, -suction_id]) circle(d=suction_key+nozzle_d);
             }
-            translate([0, -slot_h/2])
-                square([slot_w, slot_h], center=true);
+            translate([-slot_dx, 0]) slot();
+            translate([ slot_dx, 0]) slot();
             translate([0, -th]) {
                 cutout();
                 translate([0, -(etag_w+2*th+etag_h+2*th)]) {
@@ -74,6 +100,24 @@ module foldup_etag_bracket(th=2, layer_h=0.2, nozzle_d=0.4) {
         }
     }
     
+    module label() {
+        label = "FASTRAK FLEX";
+        typeface = "Liberation Sans:style=Bold";
+        label_w = 10; // At size=1, the text is approximately 10 mm wide.
+        type_size = (bracket_w-th)/label_w;
+            text(label, font=typeface, size=type_size,
+                 halign="center", valign="center");
+    }
+    
+    module attrib() {
+        label = "ADRIAN MCCARTHY";
+        typeface = "Liberation Sans:style=Bold";
+        label_w = 13.2;
+        type_size = (bracket_w-th)/label_w;
+            text(label, font=typeface, size=type_size,
+                 halign="center", valign="center");
+    }
+
     difference() {
         linear_extrude(th, convexity=8) profile();
         translate([0, -(th+etag_w+th), 0]) {
@@ -82,6 +126,17 @@ module foldup_etag_bracket(th=2, layer_h=0.2, nozzle_d=0.4) {
                 groove(bracket_w+0.1);
                 translate([0, -(th+etag_w+th), 0]) {
                     groove(bracket_w+0.1);
+                }
+            }
+        }
+    }
+    
+    translate([0, -th, th-0.1]) {
+        linear_extrude(2*layer_h+0.1, convexity=10) {
+            translate([0, -(etag_w+2*th+etag_h/2)]) {
+                label();
+                translate([0, -(etag_h/2+2*th+etag_w+2*th+etag_h/2)]) {
+                    attrib();
                 }
             }
         }
