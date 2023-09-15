@@ -235,10 +235,10 @@ module etag_bracket2(th=2, nozzle_d=0.4) {
                         offset(r=th+nozzle_d/2)
                             square([etag_l, etag_w], center=true);
                         polygon([
-                            [-(etag_l-1.6*th)/2, etag_w/2+th+nozzle_d],
+                            [-(etag_l-1*th)/2, etag_w/2+th+nozzle_d],
                             [-(etag_l-4*th)/2, -etag_w/2],
                             [ (etag_l-4*th)/2, -etag_w/2],
-                            [ (etag_l-1.6*th)/2, etag_w/2+th+nozzle_d]
+                            [ (etag_l-1*th)/2, etag_w/2+th+nozzle_d]
                         ]);
                     }
                 }
