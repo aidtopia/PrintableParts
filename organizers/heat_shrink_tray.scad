@@ -1,3 +1,6 @@
+// Heat Shrink Organizer Tray
+// Adrian McCarthy
+
 function inch(x) = x * 25.4;
 function slice(list, range) = [for (i = range) list[i]];
 function sum(values) =
@@ -53,7 +56,7 @@ module tray(length=inch(6+1/8), widths=[for (i=[0:4]) inch(1)], height=inch(3/4)
     }
     
     module rail(width) {
-        rail_size = inch(3/8);
+        rail_size = inch(1/2);
         translate([0, 0, height-th]) {
             linear_extrude(th, convexity=6) {
                 intersection() {
