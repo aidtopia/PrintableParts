@@ -1,5 +1,6 @@
 *.stl
 *.gcode
+*.png
 *.jpg
 *.mov
 half_baked/
