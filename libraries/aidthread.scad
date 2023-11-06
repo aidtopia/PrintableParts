@@ -5,7 +5,7 @@
 // * internal thread: tap=true and subtract the resulting shape
 // * external thread: tap=false
 
-module threads(h, d, pitch, tap=true, nozzle_d=0.4) {
+module AT_threads(h, d, pitch, tap=true, nozzle_d=0.4) {
     thread_h = pitch / (2*tan(30));
     // An M3 screw has a major diameter of 3 mm.  For a tap, we nudge it
     // up with the nozzle diameter to compensate for the problem of
@@ -114,23 +114,29 @@ module threads(h, d, pitch, tap=true, nozzle_d=0.4) {
     ];
 
     intersection() {
-        extend = tap ? 0.1 : 0;
-        translate([0, 0, -extend])
-            cylinder(h=h+2*extend, d=d_max);
         translate([0, 0, -pitch/2])
             polyhedron(all_points, all_faces, convexity=6);
+        // Intersect with a cube to trim it to final height
+        extend = tap ? 0.1 : 0;
+        translate([0, 0, -extend])
+            linear_extrude(h+2*extend)
+                square(d_max, center=true);
     }
 }
 
-$fn=60;
-pitch=1.5;
-union() {
-    cylinder(h=2, d=25, $fn=6);
-    translate([0, 0, 2])
-        threads(h=4.15*pitch, d=18, pitch=pitch, tap=false, nozzle_d=0.4);
+module AT_demo_threads() {
+    $fn=60;
+    pitch=1.5;
+    union() {
+        cylinder(h=4, d=25, $fn=6);
+        translate([0, 0, 4])
+            AT_threads(h=4*pitch, d=18, pitch=pitch, tap=false, nozzle_d=0.4);
+    }
+
+    translate([30, 0, 0]) difference() {
+        cylinder(h=4*pitch, d=25, $fn=6);
+        AT_threads(h=4*pitch, d=18, pitch=pitch, tap=true, nozzle_d=0.4);
+    }
 }
 
-translate([30, 0, 0]) difference() {
-    cylinder(h=4.15*pitch, d=25, $fn=6);
-    threads(h=4.15*pitch, d=18, pitch=pitch, tap=true, nozzle_d=0.4);
-}
+AT_demo_threads();
