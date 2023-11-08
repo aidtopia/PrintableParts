@@ -426,29 +426,30 @@ function AG_spur_tooth_profile(g) =
             each tooth_path
         ],
 
+        // TODO fillet at root circle
+        // TODO tip relief
+        // TODO crowning of tooth surface?
+
         backing = AG_backing(g),
         rim = backing == 0 ? [] :
             [ teeth[0],
               each [
                 let (
                     rim_r = pitch_r + backing,
-                    step_a = ($fa > 0) ? ($fa/360) : 1,
-                    step_s = ($fs > 0) ? $fs / (2*PI*rim_r) : 1,
-                    step = ($fn > 0) ? 1/$fn : min(step_a, step_s),
+                    facets_a = $fa > 0 ? 360/$fa : 1,
+                    facets_s = $fs > 0 ? 2*PI*rim_r/$fs : 1,
+                    facets =
+                        max(($fn > 0) ? $fn : ceil(min(facets_a, facets_s)),
+                            2*tooth_count),
+                    step = 360/facets,
                     bias = atan2(teeth[0].y, teeth[0].x)
                 )
                 for (i = [0:step:360])
                    [ rim_r * cos(i+bias), rim_r * sin(i+bias) ]
               ]
             ]
-
-        // TODO fillet at root circle
-        // TODO tip relief
-        // TODO crowning of tooth surface?
     )
-
     assert(root_r > 0)
-
     [ each rim, each teeth ];
 
 function AG_rack_tooth_profile(g) =
