@@ -30,6 +30,7 @@ function AG_thickness(g)        = assert(len(g) > 7) g[7];
 function AG_helix_angle(g)      = (len(g) > 8) ? g[8] : 0;
 function AG_herringbone(g)      = (len(g) > 9) ? g[9] : false;
 function AG_backing(g)          = (len(g) > 10) ? g[10] : 0;
+function AG_depopulated(g)      = (len(g) > 11) ? g[11] : [];
 
 // Higher indexes are reserved for future use
 //
@@ -37,8 +38,7 @@ function AG_backing(g)          = (len(g) > 10) ? g[10] : 0;
 // the default gear serves as the default template for the gear
 // definition APIs.
 AG_default_gear =
-    ["AG gear", "default gear", 15, 2, 28, 0, 0.25, 1, 0, false, 0];
-
+    ["AG gear", "default gear", 15, 2, 28, 0, 0.25, 1, 0, false, 0, []];
 
 // Instead of creating additional gear definitions by hand, we provide
 // `AG_define_...` functions to define the desired gear.
@@ -55,6 +55,7 @@ function AG_define_gear(
     thickness=undef,
     helix_angle=undef,
     herringbone=undef,
+    depop=[],
     name="spur gear",
     mate=AG_default_gear
 ) =
@@ -66,7 +67,7 @@ function AG_define_gear(
     AG_define_universal("AG gear", name, tooth_count, m,
                         pressure_angle, backlash_angle, clearance,
                         thickness, helix_angle, herringbone,
-                        backing, mate);
+                        backing, depop, mate);
 
 // For internal gears.
 function AG_define_ring_gear(
@@ -79,6 +80,7 @@ function AG_define_ring_gear(
     helix_angle=undef,
     herringbone=undef,
     pitch_to_rim=undef,
+    depop=[],
     name="ring gear",
     mate=AG_default_gear
 ) =
@@ -99,7 +101,7 @@ function AG_define_ring_gear(
     AG_define_universal("AG ring", name, tooth_count, m,
                         pressure_angle, backlash_angle, clearance,
                         thickness, helix_angle, herringbone,
-                        backing, mate);
+                        backing, depop, mate);
 
 // For linear gear rack.
 function AG_define_rack(
@@ -112,6 +114,7 @@ function AG_define_rack(
     helix_angle=undef,
     herringbone=undef,
     height_to_pitch=undef,
+    depop=[],
     name="rack",
     mate=AG_default_gear
 ) =
@@ -133,7 +136,7 @@ function AG_define_rack(
     AG_define_universal("AG rack", name, tooth_count, m,
                         pressure_angle, backlash_angle, c,
                         thickness, helix_angle, herringbone,
-                        backing, mate);
+                        backing, depop, mate);
 
 // For internal use.
 function AG_define_universal(
@@ -148,6 +151,7 @@ function AG_define_universal(
     helix_angle,
     herringbone,
     backing,
+    depop,
     mate
 ) =
     let (m = iso_module,
@@ -166,7 +170,8 @@ function AG_define_universal(
                 flip * AG_helix_angle(mate) : helix_angle,
          dblhelix =
             is_undef(herringbone) ? AG_herringbone(mate) :
-                                    herringbone
+                                    herringbone,
+         depopulated = AG_expand_tooth_set(depop)
     )
 
     assert(z > 0,
@@ -188,6 +193,10 @@ function AG_define_universal(
            "AG: herringbone gears require a non-zero helix angle")
     assert(0 <= backing,
            "AG: the backing cannot be negative")
+    assert(len(depopulated) <= z,
+           "AG: cannot remove more than the total number of teeth")
+    assert(len(depopulated) == 0 || (1 <= min(depopulated) && max(depopulated) <= z),
+           "AG: depopulated teeth are not in range")
 
 //    let (minimum_teeth = floor(2 / pow(sin(pressure_angle), 2)))
 //    assert(tooth_count >= minimum_teeth,
@@ -196,7 +205,43 @@ function AG_define_universal(
 //               pressure_angle, "°"))
 
     [ type, name, z, m, alpha, backlash, c, th, beta, dblhelix,
-      backing ];
+      backing, depopulated ];
+
+function AG_expand_tooth_set(set) =
+    is_undef(set) ? [] :
+    is_num(set)   ? [set] :
+    is_list(set)  ? set :
+                    [for (i=set) i];
+
+function AG_tooth_set_contains(set, tooth) =
+    len(set) == 0 ? false :
+        set[0] == tooth ||
+        (len(set) > 1 && 
+         AG_tooth_set_contains([for (i=[1:len(set)-1]) set[i]], tooth));
+
+// Returns a new gear definition equivalent to the old one minus the
+// specified teeth.  Teeth are numbered from 1.  A gear with removed
+// teeth is sometimes called a "mutilated" gear.
+function AG_depopulated_gear(g, extractions) =
+    let (
+        z = AG_tooth_count(g),
+        ex0 = AG_depopulated(g),
+        ex1 = AG_expand_tooth_set(extractions)
+    )
+    assert(len(ex1) <= z,
+        "AG: cannot remove more than the total number of teeth")
+    assert(len(ex1) == 0 || (1 <= min(ex1) && max(ex1) <= z),
+        "AG: cannot depopulate teeth number that's out of range")
+    [
+        each [for (i=[0:10]) g[i]],
+        [
+            for (tooth=[1:z])
+                if (AG_tooth_set_contains(ex0, tooth) ||
+                    AG_tooth_set_contains(ex1, tooth)) tooth
+        ]
+    ];
+
+function AG_repopulated_gear(g) = [ each [for (i=[0:10]) g[i]], [] ];
 
 // Internally, we use ISO module.  This function converts various ways of
 // representing the tooth size to ISO module.
@@ -219,6 +264,8 @@ module AG_echo(g) {
            "AG: not a gear definition")
     echo(str("\n--- ", AG_name(g), " (" , AG_type(g), ") ---\n",
              "tooth count:\t", AG_tooth_count(g), "\n",
+             len(AG_depopulated(g)) > 0 ?
+               str("  extractions: ", AG_depopulated(g), "\n") : "",
              "tooth size:\n",
              "  module:\t", AG_module(g), " mm\n",
              "  circular pitch:\t", AG_circular_pitch(g),
@@ -286,15 +333,15 @@ function AG_center_distance(g1, g2) =
     abs(d1 + d2) / 2;
 
 // Returns a list of points forming a 2D-polygon of the gear teeth.
-function AG_tooth_profile(g, first_tooth=undef, last_tooth=undef) =
+function AG_tooth_profile(g) =
     let (type = AG_type(g))
-    type == "AG gear" ? AG_spur_tooth_profile(g, first_tooth=first_tooth, last_tooth=last_tooth) :
+    type == "AG gear" ? AG_spur_tooth_profile(g) :
     type == "AG rack" ? AG_rack_tooth_profile(g) :
-    type == "AG ring" ? AG_spur_tooth_profile(g, first_tooth=first_tooth, last_tooth=last_tooth) :
+    type == "AG ring" ? AG_spur_tooth_profile(g) :
     assert(false, str("AG: '", type, "' is not a recognized gear type"))
     [];
 
-function AG_spur_tooth_profile(g, first_tooth=undef, last_tooth=undef) =
+function AG_spur_tooth_profile(g) =
     assert(AG_type(g) == "AG gear" || AG_type(g) == "AG ring")
     let (
         // The pitch circle, sometimes called the reference circle, is
@@ -357,21 +404,23 @@ function AG_spur_tooth_profile(g, first_tooth=undef, last_tooth=undef) =
         
         dtheta = 360 / tooth_count,
         
-        first = is_undef(first_tooth) ? 1 : first_tooth,
-        last  = is_undef(last_tooth)  ? tooth_count : last_tooth,
+        // The radius for missing teeth (such as a mutilated gear).
+        neut_r = min(root_r, start_r),
         
         teeth = [ for (i = [1:tooth_count])
             let (
                 theta = (i-1) * dtheta,
                 theta1 = theta - tooth_angle/2,
                 theta2 = theta + tooth_angle/2,
-                tooth_path = (first <= i && i <= last) ?
+                tooth_path = AG_tooth_set_contains(AG_depopulated(g), i) ?
+                    [
+                        [ neut_r*cos(theta1), neut_r*sin(theta1) ],
+                        [ neut_r*cos(theta),  neut_r*sin(theta)  ],
+                        [ neut_r*cos(theta2), neut_r*sin(theta2) ]
+                    ] :
                     [
                         each rotated_points(edge1, theta1),
                         each rotated_points(edge2, theta2)
-                    ] :
-                    [
-                        [ root_r*cos(theta), root_r*sin(theta) ]
                     ]
             )
             each tooth_path
@@ -418,7 +467,8 @@ function AG_rack_tooth_profile(g) =
         tooth_count = AG_tooth_count(g),
         w = CP * tooth_count,
         height_to_pitch = AG_backing(g),
-        foundation = -height_to_pitch
+        foundation = -height_to_pitch,
+        depop = AG_depopulated(g)
     )
     
     [
@@ -426,17 +476,18 @@ function AG_rack_tooth_profile(g) =
         [0, root_y],
         each [
             for (i=[1:tooth_count])
-                let (
-                    center = (i - 0.5) * CP,
-                    ltip = center - flat/2,
-                    rtip = center + flat/2,
-                    lroot = ltip - run,
-                    rroot = rtip + run
-                )
-                each [
-                    [lroot, root_y], [ltip, tip_y],
-                    [rtip, tip_y], [rroot, root_y]
-                ]
+                if (!AG_tooth_set_contains(depop, i))
+                    let (
+                        center = (i - 0.5) * CP,
+                        ltip = center - flat/2,
+                        rtip = center + flat/2,
+                        lroot = ltip - run,
+                        rroot = rtip + run
+                    )
+                    each [
+                        [lroot, root_y], [ltip, tip_y],
+                        [rtip, tip_y], [rroot, root_y]
+                    ]
         ],
         [w, root_y],
         [w, foundation]
@@ -455,21 +506,19 @@ function AG_helix_twist(g, th=1) =
     let (circumference = PI * AG_pitch_diameter(g))
         th * 360 * AG_helix_shear(g) / circumference;
 
-module AG_gear(gear, convexity=10, center=false, first_tooth=undef, last_tooth=undef) {
+module AG_gear(gear, convexity=10, center=false) {
     if (AG_type(gear) == "AG rack") {
         AG_rack(gear, convexity=convexity, center=center);
     } else {
         AG_cylindrical_gear(gear, convexity=convexity,
-                            center=center,
-                            first_tooth=first_tooth,
-                            last_tooth=last_tooth) {
+                            center=center) {
             children();
         }
     }
 }
 
 // Creates geometry for cylindrical spur, helical, and ring (internal) gears.
-module AG_cylindrical_gear(gear, convexity=10, center=false, first_tooth=undef, last_tooth=undef) {
+module AG_cylindrical_gear(gear, convexity=10, center=false) {
     assert(AG_type(gear) != "AG rack",
            str("AG: to create geometry for the rack \"", AG_name(gear),
                "\", use `AG_rack` instead of `AG_gear`."));
@@ -478,8 +527,7 @@ module AG_cylindrical_gear(gear, convexity=10, center=false, first_tooth=undef, 
     w = herringbone ? th/2 : th;
     twist = AG_helix_twist(gear, w);
     profile =
-        AG_tooth_profile(gear, first_tooth=first_tooth,
-                         last_tooth=last_tooth);
+        AG_tooth_profile(gear);
     drop = center ? th/2 : 0;
 
     translate([0, 0, -drop])

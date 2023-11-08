@@ -260,25 +260,41 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
         (motor == "jgy")  ? jgy_shaft_h - (plate_th+spacer_h) + jgy_base_h + 1
                           : 8;                            
 
-    // The drive gear is connected directly to the motor shaft.  It has
-    // teeth 3/4 of the way around, and is toothless on the remaining
-    // quarter.  We use helical teeth for smooth, quiet operation and
-    // durability.  Earlier attempts to use herringbone teeth would jam
-    // if there was a slight misalignment when the teeth re-engage after
-    // a drop.  Helical gears are more forgiving.
-    drive = AG_define_gear(
+    motor_w =
+        (motor == "deer") ? deer_w :
+        (motor == "jgy")  ? jgy_w
+                          : 90;
+    motor_h =
+        (motor == "deer") ? deer_h :
+        (motor == "jgy")  ? jgy_h
+                          : 27;
+
+    // This is the model for the drive gear, which is connected directly
+    // to the motor shaft.
+    model = AG_define_gear(
         iso_module=1.25,
         tooth_count=55,
         thickness=gear_th,
         helix_angle=15,
         herringbone=false
     );
+
+    // The actual drive gear has teeth 3/4 of the way around, and is
+    // toothless on the remaining quarter.  We use helical teeth for
+    // smooth, quiet operation and durability.  Attempts to use
+    // herringbone teeth would jam if there was a slight misalignment
+    // when the teeth re-engage after passing the depopulated portion.
+    // Helical gears are more forgiving.
+    drive_teeth = AG_tooth_count(model);
+    actual_drive_teeth = ceil(3/4 * drive_teeth);
+    drive =
+        AG_depopulated_gear(model, [actual_drive_teeth+1:drive_teeth]);
+
     // The drive gear turns the winder gear, which is attached to the
     // spool.
     winder = AG_define_gear(tooth_count=12, mate=drive);
     dx = AG_center_distance(drive, winder);
 
-    actual_drive_teeth = ceil(3/4 * AG_tooth_count(drive));
     spool_turns = actual_drive_teeth / AG_tooth_count(winder);
     spool_d = drop_distance / (spool_turns * PI);  // to bottom of groove
     spool_flange_d = spool_d + string_d*spool_turns;
@@ -287,7 +303,7 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
     spacer_d = AG_tips_diameter(winder);
     plate_l = plate_th/2 + AG_tips_diameter(drive)/2 + dx + spool_flange_d/2 + plate_th/2;
     plate_offset = -plate_l/2 + plate_th/2 + AG_tips_diameter(drive)/2;
-    plate_w = max(AG_tips_diameter(drive), spool_d, deer_w) + 1;
+    plate_w = max(AG_tips_diameter(drive), spool_d, motor_w) + 1 + plate_th;
     plate_r = 10;
 
     axle_d = 6;
@@ -299,12 +315,12 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
     guide_d = string_d + nozzle_d;
 
     bracket_w = plate_w;
-    bracket_l = deer_h;
+    bracket_l = motor_h;
     bracket_r = plate_r;
 
     module drive_gear() {
         difference() {
-            AG_gear(drive, first_tooth=1, last_tooth=actual_drive_teeth);
+            AG_gear(drive);
             gear_offset = plate_th + spacer_h;
             if (motor == "deer") {
                 translate([0, 0, deer_base_h-gear_offset])
@@ -474,7 +490,9 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
         translate([-dx, 0, plate_th]) {
             axle();
             translate([-spool_flange_d/2, -spool_d/2, 0])
-            rotate([0, 0, 90]) guide();
+                rotate([0, 0, 90]) guide();
+            translate([spool_d/2, -plate_w/2+plate_th, 0])
+                guide();
         }
     }
     
