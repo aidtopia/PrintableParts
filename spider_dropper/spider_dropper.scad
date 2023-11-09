@@ -20,6 +20,7 @@ Motor = "MonsterGuts Mini-Motor"; // ["FrightProps Deer Motor", "MonsterGuts Min
 Include_Base_Plate = true;
 Include_Drive_Gear = true;
 Include_Spool_Assembly = true;
+Include_Button = true;
 Include_Ceiling_Bracket = true;
 
 module __Customizer_Limit__ () {}
@@ -276,7 +277,8 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
         tooth_count=55,
         thickness=gear_th,
         helix_angle=15,
-        herringbone=false
+        herringbone=false,
+        name="drive gear"
     );
 
     // The actual drive gear has teeth 3/4 of the way around, and is
@@ -289,6 +291,7 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
     actual_drive_teeth = ceil(3/4 * drive_teeth);
     drive =
         AG_depopulated_gear(model, [actual_drive_teeth+1:drive_teeth]);
+    AG_echo(drive);
 
     // The drive gear turns the winder gear, which is attached to the
     // spool.
@@ -298,7 +301,9 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
     spool_turns = actual_drive_teeth / AG_tooth_count(winder);
     spool_d = drop_distance / (spool_turns * PI);  // to bottom of groove
     spool_flange_d = spool_d + string_d*spool_turns;
-    spool_h = 10;
+    spool_h = 12;
+
+    button_d = 5*string_d;
     
     spacer_d = AG_tips_diameter(winder);
     plate_l = plate_th/2 + AG_tips_diameter(drive)/2 + dx + spool_flange_d/2 + plate_th/2;
@@ -345,44 +350,48 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
 
         module spool() {
             module pocket() {
-                string_r = string_d/2;
-                knot_r   = 4*string_r;
-                post_r   = 1.5*string_r;
-                dr = knot_r - post_r;
-                r0 = 0;
-                r1 = post_r;
-                r2 = r1 + dr/2;
-                r3 = knot_r;
-                y0 = spool_h/4;
-                y1 = y0 + dr/2;
-                y2 = spool_h;
-                y3 = y2 + nozzle_d;
-                translate([spool_d/2-knot_r-plate_th, 0, 0]) {
-                    rotate_extrude(convexity=8, $fs=nozzle_d/2) {
-                        polygon([
-                            [r0, y3],
-                            [r0, y2],
-                            [r1, y2],
-                            [r1, y1],
-                            [r2, y0],
-                            [r3, y1],
-                            [r3, y3]
-                        ]);
-                    }
-                    translate([r2, 0, spool_h/2]) rotate([0, 90, -45]) {
-                        linear_extrude(knot_r+plate_th, convexity=8) {
+                module input(nudge=0) {
+                    rotate([0, 90, 0])
+                        translate([0, 0, nudge])
+                            linear_extrude(spool_d/2, convexity=4)
+                                rotate([0, 0, 45])
+                                    square(string_d, center=true);
+                }
+                module output(nudge=0) {
+                    rotate([0, -45, 0])
+                        translate([0, 0, nudge])
+                        linear_extrude(spool_h, convexity=4)
                             rotate([0, 0, 45])
-                                square(string_d*cos(45), center=true);
-                        }
+                                square(string_d, center=true);
+                }
+                
+                translate([spool_d/2-plate_th, 0, spool_h/2]) rotate([0, 0, -45]) {
+                    input();
+                    output();
+                    intersection() {
+                        input(nudge=-(1+cos(45))*string_d);
+                        output(nudge=-(1+cos(45))*string_d);
                     }
                 }
             }
 
             difference() {
-                rotate_extrude(convexity=10, $fa=5) difference() {
-                    square([spool_flange_d/2, spool_h-spacer_h]);
-                    translate([spool_d/2+spool_h, (spool_h-spacer_h)/2])
-                        scale([1, 0.5]) circle(r=spool_h, $fs=nozzle_d/2);
+                rotate_extrude(convexity=10, $fa=5) {
+                    r0 = 0;
+                    r1 = spool_flange_d/2;
+                    r2 = spool_d/2;
+                    y0 = 0;
+                    y1 = spool_h - spacer_h;
+                    y2 = y1 - (r1-r2);
+                    y3 = y0 + (r1-r2);
+                    polygon([
+                        [r0, y0],
+                        [r0, y1],
+                        [r1, y1],
+                        [r2, y2],
+                        [r2, y3],
+                        [r1, y0]
+                    ]);
                 }
                 // The string is secured to the spool in the pocket.
                 pocket();
@@ -405,6 +414,18 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
         }
     }
     
+    // The button is for tying of the string at the spool.
+    module button() {
+        linear_extrude(string_d, convexity=6) {
+            difference() {
+                $fs=nozzle_d/2;
+                circle(d=button_d);
+                translate([-button_d/5, 0]) circle(d=string_d);
+                translate([ button_d/5, 0]) circle(d=string_d);
+            }
+        }
+    }
+
     module plate() {
         $fs = nozzle_d/2;
 
@@ -554,8 +575,9 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
     if (Include_Drive_Gear) {
         t = show_assembled ?
             [0, 0, plate_th + spacer_h] :
-            [plate_offset+AG_tips_diameter(drive)/2+1, (plate_w+AG_tips_diameter(drive))/2+1, 0];
-        translate(t) drive_gear();
+            [plate_offset+AG_tips_diameter(drive)/2+1, (plate_w+AG_tips_diameter(drive))/2+1, AG_thickness(drive)];
+        r = show_assembled ? [0, 0, 0] : [180, 0, 0];
+        translate(t) rotate(r) drive_gear();
     }
 
     if (Include_Spool_Assembly) {
@@ -564,6 +586,13 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
             [plate_offset-(spool_flange_d+2)/2, (plate_w+spool_flange_d)/2+1, spool_h+AG_thickness(winder)];
         r = show_assembled ? [0, 0, 0] : [180, 0, 0];
         translate(t) rotate(r) spool_assembly();
+    }
+    
+    if (Include_Button) {
+        t = show_assembled ?
+            [-dx + spool_d/4, spool_d/4, plate_th + spacer_h + AG_thickness(winder) + spool_h] :
+            [plate_offset-button_d/2, (plate_w+button_d)/2+1, 0];
+        translate(t) button();
     }
 
     if (Include_Ceiling_Bracket) {
