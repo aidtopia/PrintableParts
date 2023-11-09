@@ -305,19 +305,22 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
 
     button_d = 5*string_d;
     
-    spacer_d = AG_tips_diameter(winder);
-    plate_l = plate_th/2 + AG_tips_diameter(drive)/2 + dx + spool_flange_d/2 + plate_th/2;
-    plate_offset = -plate_l/2 + plate_th/2 + AG_tips_diameter(drive)/2;
-    plate_w = max(AG_tips_diameter(drive), spool_d, motor_w) + 1 + plate_th;
-    plate_r = 10;
-
     axle_d = 6;
     axle_l = spool_h + spacer_h + AG_thickness(winder);
     assert(axle_d < AG_root_diameter(winder));
 
-    guide_w = min(plate_r, 4*string_d);
+    guide_w = max(4*string_d, 3);
     guide_h = axle_l - spool_h/2;
     guide_d = string_d + nozzle_d;
+    guide_th = max(1.5*string_d, 2);
+
+    spacer_d = AG_tips_diameter(winder);
+    plate_l = plate_th/2 + AG_tips_diameter(drive)/2 + dx + spool_flange_d/2 + plate_th/2;
+    plate_xoffset = -plate_l/2 + plate_th/2 + AG_tips_diameter(drive)/2;
+    plate_w =
+        1 + max(AG_tips_diameter(drive), spool_d, motor_w) + 1 + guide_th;
+    plate_yoffset = -(1+guide_th)/2;
+    plate_r = 10;
 
     bracket_w = plate_w;
     bracket_l = motor_h;
@@ -454,7 +457,7 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
         
         module guide() {
             translate([0, 0, -0.1]) rotate([90, 0, 0]) {
-                linear_extrude(plate_th) {
+                linear_extrude(guide_th) {
                     difference() {
                         hull() {
                             translate([-guide_w/2, 0]) square([guide_w, plate_th]);
@@ -473,7 +476,7 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
         }
 
         difference() {
-            translate([plate_offset, 0, plate_th/2]) {
+            translate([plate_xoffset, plate_yoffset, plate_th/2]) {
                 linear_extrude(plate_th, convexity=8, center=true) {
                     difference() {
                         c = corners(plate_l, plate_w, plate_r, center=true);
@@ -504,7 +507,7 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
                 rotate([0, 0, -90])
                     linear_extrude(1, center=true, convexity=10)
                         mirror([1, 0, 0])
-                            text("Prop Dropper", size=6,
+                            text("Prop Dropper", size=5,
                                  halign="center", valign="baseline");
         }
 
@@ -512,7 +515,7 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
             axle();
             translate([-spool_flange_d/2, -spool_d/2, 0])
                 rotate([0, 0, 90]) guide();
-            translate([spool_d/2, -plate_w/2+plate_th, 0])
+            translate([spool_d/2, plate_yoffset-plate_w/2+guide_th, 0])
                 guide();
         }
     }
@@ -575,7 +578,7 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
     if (Include_Drive_Gear) {
         t = show_assembled ?
             [0, 0, plate_th + spacer_h] :
-            [plate_offset+AG_tips_diameter(drive)/2+1, (plate_w+AG_tips_diameter(drive))/2+1, AG_thickness(drive)];
+            [plate_xoffset+AG_tips_diameter(drive)/2+1, plate_yoffset+(plate_w+AG_tips_diameter(drive))/2+1, AG_thickness(drive)];
         r = show_assembled ? [0, 0, 0] : [180, 0, 0];
         translate(t) rotate(r) drive_gear();
     }
@@ -583,7 +586,7 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
     if (Include_Spool_Assembly) {
         t = show_assembled ?
             [-dx, 0, plate_th + spacer_h] :
-            [plate_offset-(spool_flange_d+2)/2, (plate_w+spool_flange_d)/2+1, spool_h+AG_thickness(winder)];
+            [plate_xoffset-(spool_flange_d+2)/2, plate_yoffset+(plate_w+spool_flange_d)/2+1, spool_h+AG_thickness(winder)];
         r = show_assembled ? [0, 0, 0] : [180, 0, 0];
         translate(t) rotate(r) spool_assembly();
     }
@@ -591,14 +594,14 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
     if (Include_Button) {
         t = show_assembled ?
             [-dx + spool_d/4, spool_d/4, plate_th + spacer_h + AG_thickness(winder) + spool_h] :
-            [plate_offset-button_d/2, (plate_w+button_d)/2+1, 0];
+            [plate_xoffset-button_d/2, plate_yoffset+(plate_w+button_d)/2+1, 0];
         translate(t) button();
     }
 
     if (Include_Ceiling_Bracket) {
         t = show_assembled ?
-            [plate_l/2 + plate_offset - plate_r, 0, 0] :
-            [plate_l/2 + plate_offset + 1 + bracket_l, 0, plate_r];
+            [plate_l/2 + plate_xoffset - plate_r, plate_yoffset, 0] :
+            [plate_l/2 + plate_xoffset + 1 + bracket_l, plate_yoffset, plate_r];
         r = show_assembled ? [0, 0, 0] : [0, 90, 0];
         translate(t) rotate(r) ceiling_bracket();
     }
