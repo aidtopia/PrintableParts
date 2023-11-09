@@ -414,9 +414,7 @@ function AG_spur_tooth_profile(g) =
                 theta2 = theta + tooth_angle/2,
                 tooth_path = AG_tooth_set_contains(AG_depopulated(g), i) ?
                     [
-                        [ neut_r*cos(theta1), neut_r*sin(theta1) ],
-                        [ neut_r*cos(theta),  neut_r*sin(theta)  ],
-                        [ neut_r*cos(theta2), neut_r*sin(theta2) ]
+                        [ neut_r*cos(theta),  neut_r*sin(theta) ]
                     ] :
                     [
                         each rotated_points(edge1, theta1),
@@ -527,8 +525,7 @@ module AG_cylindrical_gear(gear, convexity=10, center=false) {
     herringbone = AG_herringbone(gear);
     w = herringbone ? th/2 : th;
     twist = AG_helix_twist(gear, w);
-    profile =
-        AG_tooth_profile(gear);
+    profile = AG_tooth_profile(gear);
     drop = center ? th/2 : 0;
 
     translate([0, 0, -drop])
