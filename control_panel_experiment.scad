@@ -1,6 +1,8 @@
 // Control Panel for simple prop controller
 // Adrian McCarthy 2023-02-12
 
+use <aidthread.scad>
+
 function inch(x) = 25.4*x;
 
 module brace(p0, p1, brace_th=2, nozzle_d=0.4) {
@@ -28,67 +30,6 @@ module rectangular_brace(size, panel_th, nozzle_d=0.4) {
 }
 
 
-// This creates a tap for cutting an internal thread.  (A nut has
-// an internal thread.  A bolt has an external thread.)
-// https://en.wikipedia.org/wiki/ISO_metric_screw_thread
-module tap(h, d, pitch, nozzle_d=0.4) {
-    // An M3 screw has a major diameter of 3 mm.  We're going to
-    // nudge it up with the nozzle diameter to compensate for
-    // the problem of printing accurate holes and to generally
-    // provide some clearance.
-    d_major = d + nozzle_d;
-    thread_h = pitch / (2*tan(30));
-    d_minor = d_major - 2 * (5/8) * thread_h;
-    d_max = d_major + thread_h/8;
-    
-    echo(str("M", d, "x", pitch, ": thread_h=", thread_h, "; d_major=", d_major, "; d_minor=", d_minor));
-
-    x_major = 0;
-    x_deep  = x_major + thread_h/8;
-    x_minor = x_major - 5/8*thread_h;
-    x_clear = x_minor - thread_h/4;
-    y_major = pitch/16;
-    y_minor = 3/8 * pitch;
-    
-    wedge_points = [
-        [x_deep, 0],
-        [x_minor, y_minor],
-        [x_minor, pitch/2],
-        [x_clear, pitch/2],
-        [x_clear, -pitch/2],
-        [x_minor, -pitch/2],
-        [x_minor, -y_minor]
-    ];
-
-    r = d_major / 2;
-
-    facets =
-        ($fn > 0) ? max(3, $fn)
-                  : max(5, ceil(min(360/$fa, 2*PI*r / $fs)));
-    dtheta = 360 / facets;
-    echo(str("dtheta for threads = ", dtheta));
-
-    module wedge() {
-        rotate([1.35, 0, 0])
-            rotate([0, 0, -(dtheta+0.1)/2])
-                rotate_extrude(angle=dtheta+0.1, convexity=10)
-                    translate([r, 0])
-                        polygon(wedge_points);
-    }
-
-    intersection() {
-        union() {
-            for (theta = [-180 : dtheta : h*360/pitch + 180]) {
-                rotate([0, 0, theta]) translate([0, 0, pitch*theta/360])
-                    wedge();
-            }
-            
-            cylinder(h=h, d=d_minor);
-        }
-        cylinder(h=h, d=d_max + nozzle_d);
-    }
-}
-
 // DC Jack
 // 
 function dcjack_size(panel_th=0) = [ 12.4, 12.4, 4 ];
@@ -104,7 +45,8 @@ module dcjack_cutout(panel_th, nozzle_d=0.4) {
     jack_dia   = dcjack_size().x;
     jack_depth = dcjack_size().z;
     translate([0, 0, panel_th/2 - jack_depth - 0.1]) {
-        tap(h=jack_depth + 0.2, d=12, pitch=1, nozzle_d=nozzle_d);
+        AT_threads(h=jack_depth + 0.2, d=12, pitch=1, tap=true,
+                   nozzle_d=nozzle_d);
     }
 }
 
@@ -152,7 +94,8 @@ module metalbtn_cutout(panel_th, nozzle_d=0.4) {
     button_dia   = metalbtn_size().x;
     button_depth = metalbtn_size().z;
     translate([0, 0, panel_th/2 - button_depth - 0.1]) {
-        tap(h=button_depth + 0.2, d=12, pitch=0.75, nozzle_d=nozzle_d);
+        AT_threads(h=button_depth + 0.2, d=12, pitch=0.75, tap=true,
+                   nozzle_d=nozzle_d);
     }
 }
 
