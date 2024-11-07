@@ -220,28 +220,40 @@ function AG_tooth_set_contains(set, tooth) =
          AG_tooth_set_contains([for (i=[1:len(set)-1]) set[i]], tooth));
 
 // Returns a new gear definition equivalent to the old one minus the
-// specified teeth.  Teeth are numbered from 1.  A gear with removed
-// teeth is sometimes called a "mutilated" gear.
+// specified teeth.  Depopulation is cumulative; if `g` is already
+// missing teeth, the resulting gear will be missing the same teeth
+// as well as those in `extractions`.
 function AG_depopulated_gear(g, extractions) =
     let (
         z = AG_tooth_count(g),
         ex0 = AG_depopulated(g),
-        ex1 = AG_expand_tooth_set(extractions)
+        ex1 = AG_expand_tooth_set(extractions),
+        field_count = max(len(g), len(AG_default_gear))
     )
     assert(len(ex1) <= z,
         "AG: cannot remove more than the total number of teeth")
     assert(len(ex1) == 0 || (1 <= min(ex1) && max(ex1) <= z),
         "AG: cannot depopulate teeth number that's out of range")
-    [
-        each [for (i=[0:10]) g[i]],
-        [
-            for (tooth=[1:z])
-                if (AG_tooth_set_contains(ex0, tooth) ||
-                    AG_tooth_set_contains(ex1, tooth)) tooth
-        ]
+    [for (i=[0:field_count-1])
+        if (i == 11)
+            [
+                for (tooth=[1:z])
+                    if (AG_tooth_set_contains(ex0, tooth) ||
+                        AG_tooth_set_contains(ex1, tooth)) tooth
+            ]
+        else if (i < len(g))
+            g[i]
+        else
+            AG_default_gear[i]
     ];
 
-function AG_repopulated_gear(g) = [ each [for (i=[0:10]) g[i]], [] ];
+
+// Returns a copy of the gear definition without any extractions.
+function AG_repopulated_gear(g) =
+    [for (i=[0:len(g)-1]) if (i==11) [] else g[i]];
+
+// A gear with removed teeth is sometimes called a "mutilated" gear.
+function AG_is_mutilated(g) = len(AG_depopulated(g)) > 0;
 
 // Internally, we use ISO module.  This function converts various ways of
 // representing the tooth size to ISO module.
@@ -258,13 +270,12 @@ function AG_as_module(
            "AG: tooth size must be specified with module, CP, or DP")
     default;
 
-
 module AG_echo(g) {
     assert(len(g) > 0 && len(g[0]) > 2 && g[0][0] == "A" && g[0][1] == "G",
            "AG: not a gear definition")
     echo(str("\n--- ", AG_name(g), " (" , AG_type(g), ") ---\n",
              "tooth count:\t", AG_tooth_count(g), "\n",
-             len(AG_depopulated(g)) > 0 ?
+             AG_is_mutilated(g) ?
                str("  extractions: ", AG_depopulated(g), "\n") : "",
              "tooth size:\n",
              "  module:\t", AG_module(g), " mm\n",
