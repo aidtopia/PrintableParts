@@ -62,10 +62,13 @@ function AG_define_gear(
     let (
         m = AG_as_module(iso_module, circular_pitch, diametral_pitch,
                          AG_module(mate)),
-        backing = 0
+        backing = 0,
+        backlash =
+            is_undef(backlash_angle) ? max(0, AG_backlash_angle(mate)) :
+                                       backlash_angle
     )
     AG_define_universal("AG gear", name, tooth_count, m,
-                        pressure_angle, backlash_angle, clearance,
+                        pressure_angle, backlash, clearance,
                         thickness, helix_angle, herringbone,
                         backing, depop, mate);
 
@@ -87,6 +90,8 @@ function AG_define_ring_gear(
     let (
         m = AG_as_module(iso_module, circular_pitch, diametral_pitch,
                          AG_module(mate)),
+        backlash = is_undef(backlash_angle) ? -abs(AG_backlash_angle(mate)) :
+                                              -abs(backlash_angle),
         backing =
             is_undef(pitch_to_rim) ?
                 AG_backing(mate) == 0 ?
@@ -99,7 +104,7 @@ function AG_define_ring_gear(
            str("AG: pitch to rim should be 0 or at least as large ",
                "as the addendum of ", addendum, " mm."))
     AG_define_universal("AG ring", name, tooth_count, m,
-                        pressure_angle, backlash_angle, clearance,
+                        pressure_angle, backlash, clearance,
                         thickness, helix_angle, herringbone,
                         backing, depop, mate);
 
@@ -182,8 +187,8 @@ function AG_define_universal(
            "AG: module size must be positive")
     assert(0 < alpha && alpha < 45,
            "AG: pressure angle must be 0-45°")
-    assert(0 <= backlash && backlash < 360/z,
-           "AG: backlash angle should be small and positive")
+    assert(abs(backlash) < 360/z,
+           "AG: backlash angle should be small")
     assert(c >= 0,
            "AG: clearance cannot be negative")
     assert(th >= 0, "AG: thickness cannot be negative")
@@ -692,8 +697,8 @@ function involute_points(base_r=1, rolling_angle0=0, rolling_angle1=360) =
 // of `base_r` intersects a concentric circle of radius `r`.  This
 // can be derived by plugging the involute equations for x and y
 // into sqrt(x^2 + y^2) == r and solving for the rolling angle.
-// Remember that this returns the rolling angle.  the rolling angle does
-// does _not_ indicate where the involute intersects the circle.
+// Remember that this returns the rolling angle, which does _not_ indicate
+// where the involute intersects the circle.
 function intersect_involute_circle(base_r, r) =
     let (d = r/base_r, rolling_angle = sqrt(d*d - 1))
         degrees_from_radians(rolling_angle);

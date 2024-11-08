@@ -43,13 +43,14 @@ module demo(helix_angle=0, herringbone=false, th=8, bore_d=6) {
     ring =
         AG_define_ring_gear(24, iso_module=3,
                             pressure_angle=20,
+                            backlash_angle=1,
                             thickness=th,
                             helix_angle=helix_angle,
                             herringbone=herringbone,
                             name="internal gear",
-                            depop=[1:8:24]);
+                            depop=[2:8:24]);
     inner =
-        AG_define_gear(16, depop=[1:8:16],
+        AG_define_gear(16, depop=[2:8:16],
                        mate=ring, name="inner gear");
 
     translate([0, 100, 0]) animate(pinion, rack);
