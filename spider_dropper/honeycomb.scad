@@ -30,7 +30,10 @@ module bounded_honeycomb(w, h, d, th, center=false) {
         honeycomb(w, h, d, th, center);
         children();
     }
-    outline(th) children();
+    difference() {
+       children();
+       offset(delta=-th) children();
+    }
 }
 
 $fn=60;

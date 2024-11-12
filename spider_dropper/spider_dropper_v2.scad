@@ -19,10 +19,8 @@ Motor = "Aslong JGY-370 12 VDC Worm Gearmotor"; // ["FrightProps Deer Motor", "M
 
 Include_Base_Plate = true;
 Include_Drive_Gear = true;
-Include_Guard_Plate = true;
 Include_Spool_Assembly = true;
-Include_Button = true;
-Include_Ceiling_Bracket = true;
+Include_Button = false;
 
 module __Customizer_Limit__ () {}
 
@@ -63,6 +61,9 @@ deer_base_d = 21;  // at the face plate.  Tapers down to 17.
 deer_base_h = 5;
 deer_mounting_screw = "M3 self-tapping";  // a #6 would fit
 deer_mounting_screw_l = 12;
+deer_mounting_screw_head_d = m3_flange_d;
+deer_mounting_screw_head_h = m3_head_h + m3_flange_h;
+deer_mounting_screw_free_d = m3_free_d;
 deer_mount_dx1 = 81;  // separation between mounting screws nearest the hub
 deer_mount_dx2 = 57;
 deer_mount_dy1 = 17; // hub to dx1 line
@@ -81,6 +82,9 @@ jgy_base_d = 13.2;
 jgy_base_h = 0;
 jgy_mounting_screw = "M3";
 jgy_mounting_screw_l = 4;
+jgy_mounting_screw_head_d = m3_head_d;
+jgy_mounting_screw_head_h = m3_head_h;
+jgy_mounting_screw_free_d = m3_free_d;
 jgy_mount_dx1 = 18;
 jgy_mount_dx2 = 18;
 jgy_mount_dy1 = -9;
@@ -128,28 +132,6 @@ module deer_motor_spline(h=1, nozzle_d=0.4) {
     }
 }
 
-module deer_motor_mounts(th, nozzle_d=0.4) {
-    translate([0, 0, -0.1]) {
-        // Cutout for the hub base.
-        cylinder(h=th+0.2, d=deer_base_d+nozzle_d);
-        
-        // Mounting bolt holes.
-        mounting_holes = [
-            [-deer_mount_dx1/2, -deer_mount_dy1],
-            [ deer_mount_dx1/2, -deer_mount_dy1],
-            [-deer_mount_dx2/2, -deer_mount_dy2],
-            [ deer_mount_dx2/2, -deer_mount_dy2]
-        ];
-
-        d = max(m3_head_d + nozzle_d, m3_flange_d);
-        for_each_position(mounting_holes) {
-            cylinder(h=th+0.1, d=m3_free_d, $fs=nozzle_d/2);
-            translate([0, 0, 2+0.1])
-                cylinder(h=th, d=d, $fs=nozzle_d/2);
-        }
-    }
-}
-
 module jgy_motor_spline(h=1, nozzle_d=0.4) {
     module flattened_shaft(clearance=nozzle_d/2) {
         intersection() {
@@ -188,28 +170,6 @@ module jgy_motor_spline(h=1, nozzle_d=0.4) {
                     }
                 }
             }
-        }
-    }
-}
-
-module jgy_motor_mounts(th, nozzle_d=0.4) {
-    translate([0, 0, -0.1]) {
-        // Cutout for the hub base.
-        cylinder(h=th+0.2, d=jgy_base_d+nozzle_d);
-
-        // Mounting bolt holes.
-        mounting_holes = [
-            [-jgy_mount_dx1/2, -jgy_mount_dy1],
-            [ jgy_mount_dx1/2, -jgy_mount_dy1],
-            [-jgy_mount_dx2/2, -jgy_mount_dy2],
-            [ jgy_mount_dx2/2, -jgy_mount_dy2]
-        ];
-
-        d = m3_head_d + nozzle_d;
-        for_each_position(mounting_holes) {
-            cylinder(h=th+0.1, d=m3_free_d, $fs=nozzle_d/2);
-            translate([0, 0, th-m3_head_h+0.1])
-                cylinder(h=th, d=d, $fs=nozzle_d/2);
         }
     }
 }
@@ -265,47 +225,43 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
 
     string_d = 2;
 
-    min_th = 1.2;
-    spacer_h = min_th/2;
-    plate_th = min_th + max(m3_head_h, m4_head_h);
+    motor_w = max(deer_w, jgy_w);
+    motor_h = max(deer_h, jgy_h);
+    motor_base_d = max(deer_base_d, jgy_base_d);
+    motor_screw_head_h =
+        max(deer_mounting_screw_head_h, jgy_mounting_screw_head_h);
+    motor_shaft_h = max(deer_base_h + deer_shaft_h, jgy_shaft_h);
 
-    gear_th = 8;
+    min_th = 3*nozzle_d;
+    plate_th = min_th + motor_screw_head_h;
 
-    motor_w =
-        (motor == "deer") ? deer_w :
-        (motor == "jgy")  ? jgy_w
-                          : 90;
-    motor_h =
-        (motor == "deer") ? deer_h :
-        (motor == "jgy")  ? jgy_h
-                          : 27;
+    gear_th = bearing608_th;
 
     // This is the model for the drive gear, which is connected directly
     // to the motor shaft.
     model = AG_define_gear(
-        iso_module=1.25,
-        tooth_count=55,
+        iso_module=1.5,
+        tooth_count=57,
         thickness=gear_th,
         helix_angle=15,
         herringbone=false,
         name="drive gear"
     );
 
-    // The actual drive gear has teeth 3/4 of the way around, and is
-    // toothless on the remaining quarter.  We use helical teeth for
-    // smooth, quiet operation and durability.  Attempts to use
-    // herringbone teeth would jam if there was a slight misalignment
-    // when the teeth re-engage after passing the depopulated portion.
-    // Helical gears are more forgiving.
+    // The actual drive gear has teeth 4/5 of the way around and is
+    // toothless on the remaining fifth.  We use helical teeth for
+    // smooth, quiet operation and durability.  Herringbone teeth
+    // jam if there is even a slight misalignment when the teeth
+    // re-engage after passing the depopulated portion.  Helical
+    // gears are more forgiving.
     drive_teeth = AG_tooth_count(model);
-    actual_drive_teeth = ceil(3/4 * drive_teeth);
+    actual_drive_teeth = ceil(4/5 * drive_teeth);
     drive =
         AG_depopulated_gear(model, [actual_drive_teeth+1:drive_teeth]);
     AG_echo(drive);
 
-    // The bottom side the drive gear must clear the bearing height.
-    drive_z0 = min_th + bearing608_th + spacer_h;
-    drive_z1 = drive_z0 + AG_thickness(drive);
+    drive_z1 = motor_shaft_h + min_th;
+    drive_z0 = drive_z1 - AG_thickness(drive);
     // The bottom of the collar that extends below the drive gear
     // around the motor shaft to enclose most of the flattened part of
     // the shaft.
@@ -316,29 +272,36 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
     drive_collar_h = drive_z0 - drive_collar_z;
 
     // The drive gear turns the winder gear, which is attached to the
-    // spool.
+    // spool.  The winder gear is slightly thicker to create some
+    // clearance between the spool and the drive gear.
     winder = AG_define_gear(
-        tooth_count=12,
-        thickness=AG_thickness(drive)+2*spacer_h,
+        tooth_count=19,
+        thickness=AG_thickness(drive)+min_th,
         mate=drive
     );
+
+    assert(AG_root_diameter(winder) > bearing608_od + 3*nozzle_d);
+
     dx = AG_center_distance(drive, winder);
 
     spool_turns = actual_drive_teeth / AG_tooth_count(winder);
     spool_d = drop_distance / (spool_turns * PI);  // to bottom of groove
     spool_flange_d = spool_d + string_d*spool_turns;
-    spool_h = 12;
+    spool_h = 2*bearing608_th - AG_thickness(winder);
 
-    axle_l = bearing608_th;
+    assert(spool_d > 2*bearing608_od);
+
+    axle_l = 2*bearing608_th + nozzle_d;
     axle_d = bearing608_id;
 
     button_d = 5*string_d;
     
-    spacer_d = AG_tips_diameter(winder);
+    spacer_h = drive_z0 - plate_th;
+    spacer_d = axle_d + 3;
     plate_l = plate_th/2 + AG_tips_diameter(drive)/2 + dx + spool_flange_d/2 + plate_th/2;
     plate_xoffset = -plate_l/2 + plate_th/2 + AG_tips_diameter(drive)/2;
     plate_w =
-        1 + max(AG_tips_diameter(drive), spool_d, motor_w) + 1;
+        1 + max(AG_tips_diameter(drive), spool_flange_d, motor_w) + 1;
     plate_yoffset = 0;
     plate_r = 10;
 
@@ -347,12 +310,20 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
     bracket_r = plate_r;
 
     c = corners(plate_l, plate_w, plate_r, center=true);
-    // Mounting bolt holes.
+    // Mounting bolt holes for both motors.
+    // [0] = [x, y] position
+    // [1] = head diameter
+    // [2] = head height
+    // [3] = free diameter
     mounting_holes = [
-        [-jgy_mount_dx1/2, -jgy_mount_dy1],
-        [ jgy_mount_dx1/2, -jgy_mount_dy1],
-        [-jgy_mount_dx2/2, -jgy_mount_dy2],
-        [ jgy_mount_dx2/2, -jgy_mount_dy2]
+        [[-jgy_mount_dx1/2, -jgy_mount_dy1],   jgy_mounting_screw_head_d,  jgy_mounting_screw_head_h, jgy_mounting_screw_free_d],
+        [[ jgy_mount_dx1/2, -jgy_mount_dy1],   jgy_mounting_screw_head_d,  jgy_mounting_screw_head_h, jgy_mounting_screw_free_d],
+        [[-jgy_mount_dx2/2, -jgy_mount_dy2],   jgy_mounting_screw_head_d,  jgy_mounting_screw_head_h, jgy_mounting_screw_free_d],
+        [[ jgy_mount_dx2/2, -jgy_mount_dy2],   jgy_mounting_screw_head_d,  jgy_mounting_screw_head_h, jgy_mounting_screw_free_d],
+        [[-deer_mount_dx1/2, -deer_mount_dy1], deer_mounting_screw_head_d, deer_mounting_screw_head_h, deer_mounting_screw_free_d],
+        [[ deer_mount_dx1/2, -deer_mount_dy1], deer_mounting_screw_head_d, deer_mounting_screw_head_h, deer_mounting_screw_free_d],
+        [[-deer_mount_dx2/2, -deer_mount_dy2], deer_mounting_screw_head_d, deer_mounting_screw_head_h, deer_mounting_screw_free_d],
+        [[ deer_mount_dx2/2, -deer_mount_dy2], deer_mounting_screw_head_d, deer_mounting_screw_head_h, deer_mounting_screw_free_d]
     ];
 
     module drive_gear() {
@@ -436,12 +407,25 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
             AG_gear(winder);
         }
    
-        translate([0, 0, min_th]) {
-            cylinder(h=axle_l+1, d=axle_d, $fs=nozzle_d/2);
-            translate([0, 0, axle_l]) {
-                winder_gear();
-                translate([0, 0, AG_thickness(winder)]) {
-                    spool();
+        translate([0, 0, plate_th+spacer_h]) {
+            difference() {
+                union() {
+                    winder_gear();
+                    translate([0, 0, AG_thickness(winder)]) {
+                        spool();
+                    }
+                }
+                translate([0, 0, -1]) {
+                    linear_extrude(spool_h + AG_thickness(winder) + 2) {
+                        circle(d=bearing608_od);
+                    }
+                }
+                // Beveling to make it easier to insert the bearings.
+                translate([0, 0, AG_thickness(winder)+spool_h-1]) {
+                    cylinder(h=2, d1=bearing608_od, d2=bearing608_od + 2);
+                }
+                translate([0, 0, -1]) {
+                    cylinder(h=2, d1=bearing608_od + 2, d2=bearing608_od);
                 }
             }
         }
@@ -453,8 +437,22 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
             difference() {
                 $fs=nozzle_d/2;
                 circle(d=button_d);
-                translate([-button_d/5, 0]) circle(d=string_d);
-                translate([ button_d/5, 0]) circle(d=string_d);
+                translate([-button_d/5, 0]) circle(d=string_d + nozzle_d);
+                translate([ button_d/5, 0]) circle(d=string_d + nozzle_d);
+            }
+        }
+    }
+
+    module guide() {
+        rotate([90, 0, 0]) {
+            linear_extrude(3*nozzle_d) {
+                difference() {
+                    hull() {
+                        circle(d=5*string_d);
+                        translate([-10*string_d/2, -(plate_th + spacer_h + AG_thickness(winder) + spool_h/2)]) square([10*string_d, plate_th]);
+                    }
+                    circle(d=string_d + nozzle_d, $fs=nozzle_d/2);
+                }
             }
         }
     }
@@ -464,154 +462,67 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
         difference() {
             linear_extrude(plate_th, convexity=8, center=true) {
                 difference() {
-                    translate([plate_xoffset, plate_yoffset, 0]) {
-                        difference() {
-                            bounded_honeycomb(plate_l, plate_w, 10, 2*nozzle_d,
+                    union() {
+                        translate([plate_xoffset, plate_yoffset, 0]) {
+                            bounded_honeycomb(plate_l, plate_w, 14, 3*nozzle_d,
                                               center=true) {
                                 hull() for_each_position(c) circle(r=plate_r);
                             }
-                            for_each_position(c) circle(d=m5_free_d+nozzle_d);
                         }
-                        for_each_position(c) difference() {
-                            offset(3*nozzle_d) circle(d=m5_free_d+nozzle_d);
-                            circle(d=m5_free_d+nozzle_d);
-                        }
+                        offset(3*nozzle_d) circle(d=motor_base_d+nozzle_d);
                     }
+
+                    // cut away for the motor base (around the shaft)
+                    circle(d=motor_base_d+nozzle_d);
+                    // cut away the honeycomb for the motor mounting screws
                     rotate([0, 0, -90]) {
-                        circle(d=jgy_base_d+nozzle_d);
-                        for_each_position(mounting_holes) {
-                            offset(2*nozzle_d) circle(d=m3_head_d + nozzle_d);
+                        for (hole=mounting_holes) {
+                            translate(hole[0])
+                                offset(nozzle_d) circle(d=hole[1]);
                         }
                     }
-                    translate([-dx, 0]) circle(d=bearing608_od);
                 }
-                rotate([0, 0, -90]) {
-                    for_each_position(mounting_holes) difference() {
-                        offset(3*nozzle_d) circle(d=m3_head_d+nozzle_d);
-                        circle(d=m3_free_d);
+                difference() {
+                    // add back supports for the mounting screws
+                    rotate([0, 0, -90]) {
+                        for (hole=mounting_holes) {
+                            translate(hole[0]) {
+                                difference() {
+                                    offset(3*nozzle_d) circle(d=hole[1]+nozzle_d);
+                                    circle(d=hole[3]+nozzle_d);
+                                }
+                            }
+                        }
                     }
+                    // cut away the opening for the base around the motor shaft again
+                    // because the screw mounts for the JGY interfere with the base
+                    // of the deer motor
+                    circle(d=motor_base_d);
                 }
             }
             // recess the mounting screws
-            translate([0, 0, plate_th-m3_head_h]) rotate([0, 0, -90]) {
-                linear_extrude(plate_th, convexity=8, center=true) {
-                    for_each_position(mounting_holes) {
-                        circle(d=m3_head_d+nozzle_d);
-                    }
-                }
-            }
-        }
-        linear_extrude(min_th+bearing608_th, convexity=4) {
-            difference() {
-                offset(3*nozzle_d) circle(d=jgy_base_d+nozzle_d);
-                circle(d=jgy_base_d+nozzle_d);
-            }
-        }
-        translate([-dx, 0]) {
-            difference() {
-                linear_extrude(min_th+bearing608_th, convexity=4) {
-                    difference() {
-                        offset(3*nozzle_d) circle(d=bearing608_od);
-                        circle(d=mid(bearing608_id, bearing608_od));
-                    }
-                }
-                translate([0, 0, min_th]) {
-                    linear_extrude(bearing608_th+1, convexity=4) {
-                        circle(d=bearing608_od);
-                    }
-                }
-            }
-        }
-    }
-
-    module guard_plate() {
-        translate([0, 0, plate_th/2])
-        difference() {
-            linear_extrude(plate_th, convexity=8, center=true) {
-                difference() {
-                    translate([plate_xoffset, plate_yoffset, 0]) {
-                        difference() {
-                            bounded_honeycomb(plate_l, plate_w, 10, 2*nozzle_d,
-                                              center=true) {
-                                hull() for_each_position(c) circle(r=plate_r);
-                            }
-                            for_each_position(c) circle(d=m5_free_d+nozzle_d);
-                        }
-                        for_each_position(c) difference() {
-                            offset(3*nozzle_d) circle(d=m5_free_d+nozzle_d);
-                            circle(d=m5_free_d+nozzle_d);
+            rotate([0, 0, -90]) {
+                for (hole=mounting_holes) {
+                    translate([hole[0][0], hole[0][1], plate_th-hole[2]]) {
+                        linear_extrude(plate_th, convexity=8, center=true) {
+                            circle(d=hole[1] + nozzle_d);
                         }
                     }
-                    translate([-dx, 0]) circle(d=bearing608_od);
                 }
             }
         }
         translate([-dx, 0]) {
-            difference() {
-                linear_extrude(min_th+bearing608_th, convexity=4) {
-                    difference() {
-                        offset(3*nozzle_d) circle(d=bearing608_od);
-                        circle(d=mid(bearing608_id, bearing608_od));
-                    }
-                }
-                translate([0, 0, min_th]) {
-                    linear_extrude(bearing608_th+1, convexity=4) {
-                        circle(d=bearing608_od);
-                    }
+            cylinder(h=plate_th+spacer_h, d=spacer_d);
+            translate([0, 0, plate_th + spacer_h]) {
+                cylinder(h=axle_l-nozzle_d, d=axle_d);
+                translate([0, 0, axle_l-nozzle_d]) {
+                    cylinder(h=nozzle_d, d1=axle_d, d2=axle_d-nozzle_d);
                 }
             }
         }
-    }
 
-
-    module ceiling_bracket() {
-        dx = bracket_l/2 - bracket_r;
-        dy = bracket_w/2 - bracket_r;
-        
-        module tab() {
-            linear_extrude(plate_th) {
-                difference() {
-                    hull() {
-                        circle(r=bracket_r);
-                        translate([bracket_r-plate_th/2, 0])
-                            square([plate_th, 2*bracket_r], center=true);
-                    }
-                    circle(d=m5_free_d, $fs=nozzle_d/2);
-                }
-            }
-        }
-        
-        module screw_hole() {
-            rotate_extrude(convexity=4, $fs=nozzle_d/2)
-                polygon([
-                    [0, -0.1],
-                    [(no6_head_d+nozzle_d)/2, -0.1],
-                    [(no6_head_d+nozzle_d)/2, 0],
-                    [(no6_free_d+nozzle_d)/2, no6_sink_h],
-                    [(no6_free_d+nozzle_d)/2, plate_th+0.1],
-                    [0, plate_th+0.1]
-                ]);
-        }
-        
-        translate([bracket_r-plate_th, 0, 0]) rotate([0, 90, 0]) {
-            difference() {
-                linear_extrude(plate_th, convexity=8) {
-                    hull() {
-                        translate([bracket_l-bracket_r,  dy]) circle(r=bracket_r);
-                        translate([bracket_l-bracket_r, -dy]) circle(r=bracket_r);
-                        translate([0, -bracket_w/2]) square([1, bracket_w]);
-                    }
-                }
-                translate([bracket_l/2,  bracket_w/4, 0]) screw_hole();
-                translate([bracket_l/2, -bracket_w/4, 0]) screw_hole();
-                translate([bracket_l/2, 0, plate_th]) rotate([0, 0, -90])
-                    linear_extrude(1, center=true, convexity=8)
-                        text("Ceiling", 7, halign="center", valign="center");
-            }
-        }
-        translate([0, 0, -plate_th]) {
-            translate([0,  dy, 0]) tab();
-            translate([0, -dy, 0]) tab();
+        translate([-dx, plate_w/2, plate_th + spacer_h + AG_thickness(winder) + spool_h/2]) {
+            guide();
         }
     }
     
@@ -627,17 +538,10 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
         translate(t) rotate(r) drive_gear();
     }
 
-    if (Include_Guard_Plate) {
-        t = show_assembled ?
-            [0, 0, 25] :
-            [0, -(plate_w + 1), 0];
-        translate(t) guard_plate();
-    }
-    
     if (Include_Spool_Assembly) {
         t = show_assembled ?
             [-dx, 0, 0] :
-            [plate_xoffset-(spool_flange_d+2)/2, plate_yoffset+(plate_w+spool_flange_d)/2+1, spool_h + AG_thickness(winder) + axle_l + min_th];
+            [plate_xoffset-(spool_flange_d+2)/2, plate_yoffset+(plate_w+spool_flange_d)/2+1, spool_h + AG_thickness(winder) + plate_th + spacer_h];
         r = show_assembled ? [0, 0, 0] : [180, 0, 0];
         translate(t) rotate(r) spool_assembly();
     }
@@ -649,88 +553,86 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
         translate(t) button();
     }
 
-    if (Include_Ceiling_Bracket) {
-        t = show_assembled ?
-            [plate_l/2 + plate_xoffset - plate_r, plate_yoffset, 0] :
-            [plate_l/2 + plate_xoffset + 1 + bracket_l, plate_yoffset, plate_r];
-        r = show_assembled ? [0, 0, 0] : [0, 90, 0];
-        translate(t) rotate(r) ceiling_bracket();
-    }
-    
-    echo(str(
-        "\nPRINTING INSTRUCTIONS\n",
-        "\nExport the model and slice it with a 0.2 mm or 0.3 mm layer\n",
-        "height using at least 3 perimeters.  Print it with your choice\n",
-        "of material.  It's been tested with PLA and PETG.\n"
-    ));
-    
-    if (motor == "deer") {
+    if (!$preview) {
         echo(str(
-            "\nASSEMBLY INSTRUCTIONS\n",
-            "\nUnscrew the arm from the motor shaft. Keep the hub\n",
-            "screw. If you need to replace it, use an M4 x 10 mm\n",
-            "machine screw.\n",
-            "\nUnscrew the four elevated screws from the perimeter\n",
-            "of the motor housing. Those are M3 x 10 mm self-tapping\n",
-            "screws.\n",
-            "\nAttach the motor to the back of the plate with the\n",
-            "shaft poking through the center of the large hole.  You\n",
-            "can re-use the perimeter screws or substitute longer\n",
-            "ones. I used M3 x 16 mm self-tapping screws with flanges\n",
-            "just under the heads.\n",
-            "\nAlign the shaped hole on the drive gear with the end of\n",
-            "the motor shaft and press it into place. The clockwise\n",
-            "arrow should be facing away from the plate. Secure the\n",
-            "gear with the M4 hub screw you removed at the beginning.\n",
-            "\nTest the motor by applying power and making sure the\n",
-            "gear turns clockwise, as indicated by the arrow, and that\n",
-            "it doesn't rub against the plate. If the gear turns\n",
-            "counterclockwise or if it changes direction when the\n",
-            "motion is impeded, it will not work with this design.\n"
+            "\nPRINTING INSTRUCTIONS\n",
+            "\nExport the model and slice it with a 0.2 mm or 0.3 mm layer\n",
+            "height using at least 3 perimeters.  Print it with your choice\n",
+            "of material.  It has been tested with PLA and PETG.\n"
         ));
-    }
-    if (motor == "jgy") {
-        echo(str(
-            "\nASSEMBLY INSTRUCTIONS\n",
-            "\nAttach the motor to the back of the plate with the\n",
-            "shaft poking through the largest hole. Secure the motor\n",
-            "with four M3 x 6 mm machine screws. If the shaft isn't\n",
-            "quite at right angles to the plate, you can make small\n",
-            "adjustments by shimming the motor with bits of paper.\n",
-            "\nAlign the shaped hole on the drive gear with the end of\n",
-            "the motor shaft and press it into place. The clockwise\n",
-            "arrow should be facing away from the plate. Secure the\n",
-            "gear with an M3 x 10mm machine screw.\n",
-            "\nTest the motor by applying power and making sure the\n",
-            "gear turns clockwise, as indicated by the arrow, and that\n",
-            "it doesn't rub against the plate. If the gear turns\n",
-            "counterclockwise, switch the wires connected to the motor\n",
-            "and test again.\n"
-        ));
-    }
+        
+        if (motor == "deer") {
+            echo(str(
+                "\nASSEMBLY INSTRUCTIONS\n",
+                "\nUnscrew the arm from the motor shaft. Keep the hub\n",
+                "screw. If you need to replace it, use an M4 x 10 mm\n",
+                "machine screw.\n",
+                "\nUnscrew the four elevated screws from the perimeter\n",
+                "of the motor housing. Those are M3 x 10 mm self-tapping\n",
+                "screws.\n",
+                "\nAttach the motor to the back of the plate with the\n",
+                "shaft poking through the center of the large hole.  You\n",
+                "can re-use the perimeter screws or substitute longer\n",
+                "ones. I used M3 x 16 mm self-tapping screws with flanges\n",
+                "just under the heads.\n",
+                "\nAlign the shaped hole on the drive gear with the end of\n",
+                "the motor shaft and press it into place. The clockwise\n",
+                "arrow should be facing away from the plate. Secure the\n",
+                "gear with the M4 hub screw you removed at the beginning.\n",
+                "\nTest the motor by applying power and making sure the\n",
+                "gear turns clockwise, as indicated by the arrow, and that\n",
+                "it doesn't rub against the plate. If the gear turns\n",
+                "counterclockwise or if it changes direction when the\n",
+                "motion is impeded, it will not work with this design.\n"
+            ));
+        }
+        if (motor == "jgy") {
+            echo(str(
+                "\nASSEMBLY INSTRUCTIONS\n",
+                "\nAttach the motor to the back of the plate with the\n",
+                "shaft poking through the largest hole. Secure the motor\n",
+                "with four M3 x 6 mm machine screws. If the shaft isn't\n",
+                "quite at right angles to the plate, you can make small\n",
+                "adjustments by shimming the motor with bits of paper.\n",
+                "\nAlign the shaped hole on the drive gear with the end of\n",
+                "the motor shaft and press it into place. The clockwise\n",
+                "arrow should be facing away from the plate. Secure the\n",
+                "gear with an M3 x 10mm machine screw.\n",
+                "\nTest the motor by applying power and making sure the\n",
+                "gear turns clockwise, as indicated by the arrow, and that\n",
+                "it doesn't rub against the plate. If the gear turns\n",
+                "counterclockwise, switch the wires connected to the motor\n",
+                "and test again.\n"
+            ));
+        }
 
-    echo(str(
-        "\nFeed the end of the string through the small hole in the\n",
-        "guide on the plate.  Then feed the same end through the small\n",
-        "hole in the groove of the spool.  It will emerge on top of the\n",
-        "spool.  Tie the end through the button.\n",
-        "\nHold the spool assembly with the gear section over the head\n",
-        "of the plastic axle on the plate. The arrow should be facing\n",
-        "away from the plate.\n",
-        "\nTurn on the motor. When the toothless portion of the drive\n",
-        "gear comes around, you should be able to press the spool\n",
-        "assembly all the way down the axle. When the teeth come around\n",
-        "the spool should begin winding up the string. Apply a little\n",
-        "resistance to the string below the guide, so that it wraps\n",
-        "around the spool evenly.  When the toothless portion arrives\n",
-        "again, you should be able to pull the string and it will\n",
-        "unspool.  Repeat until you have a feel for the drop distance.\n",
-        "\nTurn off the motor.  Attach your prop to the string at the\n",
-        "drop distance below the guide.\n",
-        "\nYour prop should not weigh more than 1 pound (about 0.5 kg).\n",
-        "\nEnsure the string doesn't get tangled or wrapped around the\n",
-        "prop when it drops.\n"
-    ));
+        echo(str(
+            "\nPress two 608 ball bearings (commonly used in skateboard\n",
+            "wheels) into the bore of the spool assembly.  They should fit\n",
+            "tightly and be flush with the top and bottom of the spool\n",
+            "assembly.\n",
+            "\nFeed the end of the string through the small hole in the\n",
+            "guide on the plate.  Then feed the same end through the small\n",
+            "hole in the groove of the spool.  It will emerge on top of the\n",
+            "spool.  Tie the end through the button.\n",
+            "\nHold the spool assembly with the gear section over the head\n",
+            "of the plastic axle on the plate. The arrow should be facing\n",
+            "away from the plate.\n",
+            "\nTurn on the motor. When the toothless portion of the drive\n",
+            "gear comes around, you should be able to press the spool\n",
+            "assembly all the way down the axle. When the teeth come around\n",
+            "the spool should begin winding up the string. Apply a little\n",
+            "resistance to the string below the guide, so that it wraps\n",
+            "around the spool evenly.  When the toothless portion arrives\n",
+            "again, you should be able to pull the string and it will\n",
+            "unspool.  Repeat until you have a feel for the drop distance.\n",
+            "\nTurn off the motor.  Attach your prop to the string at the\n",
+            "drop distance below the guide.\n",
+            "\nYour prop should not weigh more than 1 pound (about 0.5 kg).\n",
+            "\nEnsure the string doesn't get tangled or wrapped around the\n",
+            "prop when it drops.\n"
+        ));
+    }
 }
 
 drop_distance =
