@@ -228,9 +228,12 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
     motor_w = max(deer_w, jgy_w);
     motor_h = max(deer_h, jgy_h);
     motor_base_d = max(deer_base_d, jgy_base_d);
+    motor_base_h = max(deer_base_h, jgy_base_h);
     motor_screw_head_h =
         max(deer_mounting_screw_head_h, jgy_mounting_screw_head_h);
-    motor_shaft_h = max(deer_base_h + deer_shaft_h, jgy_shaft_h);
+    motor_shaft_h =
+        max(deer_base_h + deer_shaft_h, jgy_base_h + jgy_shaft_h);
+    motor_shaft_d = max(deer_shaft_d, jgy_shaft_d);
 
     min_th = 3*nozzle_d;
     plate_th = min_th + motor_screw_head_h;
@@ -260,15 +263,18 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
         AG_depopulated_gear(model, [actual_drive_teeth+1:drive_teeth]);
     AG_echo(drive);
 
+    // The top of the drive gear must be at least min_th above the top
+    // of the motor shaft.  That's going to be the reference for the
+    // heights of everything else in the gear train.
     drive_z1 = motor_shaft_h + min_th;
     drive_z0 = drive_z1 - AG_thickness(drive);
     // The bottom of the collar that extends below the drive gear
     // around the motor shaft to enclose most of the flattened part of
     // the shaft.
-    drive_collar_z = 4;
+    drive_collar_z = motor_base_h+1;
     drive_collar_d =
-        min(max(mid(jgy_shaft_d, jgy_base_d), jgy_shaft_d+6*nozzle_d),
-            jgy_base_d - nozzle_d);
+        min(max(mid(motor_shaft_d, motor_base_d), motor_shaft_d+6*nozzle_d),
+            motor_base_d - nozzle_d);
     drive_collar_h = drive_z0 - drive_collar_z;
 
     // The drive gear turns the winder gear, which is attached to the
@@ -343,6 +349,9 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
             }
             if (motor == "jgy") {
                 jgy_motor_spline(drive_z1, nozzle_d=nozzle_d);
+            } else if (motor == "deer") {
+                translate([0, 0, deer_base_h])
+                deer_motor_spline(drive_z1, nozzle_d=nozzle_d);
             }
         }
     }
