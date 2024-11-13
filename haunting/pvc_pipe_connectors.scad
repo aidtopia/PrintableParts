@@ -57,18 +57,27 @@ module PVC_corner(od, l=inch(1.25), wall_th=3, nozzle_d=0.4) {
                     offset(nozzle_d) circle(d=od);
                 }
             }
+            translate([0, 0, l-1]) {
+                cylinder(h=2, d1=od+nozzle_d, d2=od+nozzle_d+3);
+            }
         }
     }
     
     module countersunk_screw_hole(nozzle_d=0.4) {
-        // For typical #6 wood screw
+        // For typical #6 flat head wood screw.
+        head_h  = inch(0.083);
+        head_r  = inch(0.244) / 2;
+        shaft_r = inch(0.138) / 2;
+        nudge   = nozzle_d/2;  // for printing tolerance
+        depth   = wall_th + 1;
+        
         points = [
-            [0, 1],
-            [inch(0.279)+nozzle_d, 1],
-            [inch(0.279)+nozzle_d, 0],
-            [inch(0.138)+nozzle_d, -inch(0.083)],
-            [inch(0.138)+nozzle_d, -2*wall_th],
-            [inch(0), -2*wall_th]
+            [0,             1],
+            [head_r+nudge,  1],
+            [head_r+nudge,  0],
+            [shaft_r+nudge, -head_h],
+            [shaft_r+nudge, -depth],
+            [inch(0),       -depth]
         ];
         rotate_extrude($fs=nozzle_d/2) polygon(points);
     }
