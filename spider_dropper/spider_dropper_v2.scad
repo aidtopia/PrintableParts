@@ -20,6 +20,7 @@ Motor = "Aslong JGY-370 12 VDC Worm Gearmotor"; // ["FrightProps Deer Motor", "M
 Include_Base_Plate = true;
 Include_Drive_Gear = true;
 Include_Spool_Assembly = true;
+Include_Tension_Idler = true;
 Include_Button = false;
 
 module __Customizer_Limit__ () {}
@@ -236,6 +237,7 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
     motor_shaft_d = max(deer_shaft_d, jgy_shaft_d);
 
     min_th = 3*nozzle_d;
+    wall_th = 2*min_th;
     plate_th = min_th + motor_screw_head_h;
 
     gear_th = bearing608_th;
@@ -285,7 +287,9 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
         thickness=AG_thickness(drive)+min_th,
         mate=drive
     );
-
+    winder_z0 = drive_z0;
+    winder_z1 = winder_z0 + AG_thickness(winder);
+    
     assert(AG_root_diameter(winder) > bearing608_od + 3*nozzle_d);
 
     dx = AG_center_distance(drive, winder);
@@ -294,6 +298,8 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
     spool_d = drop_distance / (spool_turns * PI);  // to bottom of groove
     spool_flange_d = spool_d + string_d*spool_turns;
     spool_h = 2*bearing608_th - AG_thickness(winder);
+    spool_z0 = winder_z1;
+    spool_z1 = spool_z0 + spool_h;
 
     assert(spool_d > 2*bearing608_od);
 
@@ -304,12 +310,26 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
     
     spacer_h = drive_z0 - plate_th;
     spacer_d = axle_d + 3;
-    plate_l = plate_th/2 + AG_tips_diameter(drive)/2 + dx + spool_flange_d/2 + plate_th/2;
+    plate_l =
+        wall_th +
+        AG_tips_diameter(drive)/2 + dx + spool_flange_d/2 +
+        wall_th;
     plate_xoffset = -plate_l/2 + plate_th/2 + AG_tips_diameter(drive)/2;
     plate_w =
-        1 + max(AG_tips_diameter(drive), spool_flange_d, motor_w) + 1;
+        wall_th +
+        max(AG_tips_diameter(drive), spool_flange_d, motor_w) +
+        wall_th;
     plate_yoffset = 0;
     plate_r = 10;
+
+    idler_d = 2*string_d + min_th + bearing608_od;
+    idler_arm_th = spacer_h - min_th;
+    idler_z0 = spool_z0;
+    idler_z1 = spool_z1;
+    idler_axle_l = idler_z1 - idler_z0 + min_th;
+    idler_axle_d = bearing608_id;
+    idler_spacer_h = idler_z0 - idler_arm_th - plate_th;
+    idler_spacer_d = bearing608_id + 3;
 
     bracket_w = plate_w;
     bracket_l = motor_h;
@@ -454,28 +474,47 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
 
     module guide() {
         rotate([90, 0, 0]) {
-            linear_extrude(3*nozzle_d) {
-                difference() {
-                    hull() {
-                        circle(d=5*string_d);
-                        translate([-10*string_d/2, -(plate_th + spacer_h + AG_thickness(winder) + spool_h/2)]) square([10*string_d, plate_th]);
+            difference() {
+                linear_extrude(wall_th) {
+                    difference() {
+                        hull() {
+                            circle(d=5*string_d);
+                            translate([-10*string_d/2, -(plate_th + spacer_h + AG_thickness(winder) + spool_h/2)]) square([10*string_d, plate_th]);
+                        }
                     }
-                    circle(d=string_d + nozzle_d, $fs=nozzle_d/2);
+                }
+                translate([0, 0, wall_th/2]) {
+                    rotate_extrude(convexity=4) {
+                        difference() {
+                            translate([0, -(wall_th+nozzle_d)/2])
+                                square([string_d+nozzle_d/2, wall_th+nozzle_d]);
+                            translate([string_d + nozzle_d/2, 0])
+                                circle(d=string_d+nozzle_d);
+                        }
+                    }
                 }
             }
         }
     }
 
     module base_plate() {
+        module footprint() {
+            hull() for_each_position(c) circle(r=plate_r);
+        }
+
         translate([0, 0, plate_th/2])
         difference() {
             linear_extrude(plate_th, convexity=8, center=true) {
                 difference() {
                     union() {
                         translate([plate_xoffset, plate_yoffset, 0]) {
-                            bounded_honeycomb(plate_l, plate_w, 14, 3*nozzle_d,
-                                              center=true) {
-                                hull() for_each_position(c) circle(r=plate_r);
+                            bounded_honeycomb(plate_l, plate_w, 14,
+                                              min_th, center=true) {
+                                footprint();
+                            }
+                            difference() {
+                                footprint();
+                                offset(-wall_th) footprint();
                             }
                         }
                         offset(3*nozzle_d) circle(d=motor_base_d+nozzle_d);
@@ -535,6 +574,27 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
         }
     }
     
+    module tension_arm() {
+        arm_l = spool_flange_d/2 + min_th + idler_d/2;
+        linear_extrude(idler_arm_th) {
+            difference() {
+                hull() {
+                    offset(3) circle(d=spacer_d);
+                    translate([-arm_l, 0]) circle(d=idler_spacer_d);
+                }
+                offset(nozzle_d/2) circle(d=spacer_d);
+            }
+        }
+        translate([-arm_l, 0, idler_arm_th]) {
+            linear_extrude(idler_spacer_h) circle(d=idler_spacer_d);
+            translate([0, 0, idler_spacer_h])
+                linear_extrude(idler_axle_l) circle(d=idler_axle_d);
+        }
+    }
+    
+    module tension_idler() {
+    }
+    
     show_assembled = $preview;
     
     if (Include_Base_Plate) base_plate();
@@ -553,6 +613,15 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
             [plate_xoffset-(spool_flange_d+2)/2, plate_yoffset+(plate_w+spool_flange_d)/2+1, spool_h + AG_thickness(winder) + plate_th + spacer_h];
         r = show_assembled ? [0, 0, 0] : [180, 0, 0];
         translate(t) rotate(r) spool_assembly();
+    }
+
+    if (Include_Tension_Idler) {
+        t = show_assembled ?
+            [-dx, 0, plate_th] :
+            [plate_xoffset - plate_l/2 - (spacer_d+8)/2, -plate_w/3, 0];
+        r = show_assembled ? [0, 0, 0] : [0, 0, -90];
+        translate(t) rotate(r) tension_arm();
+        tension_idler();
     }
     
     if (Include_Button) {
