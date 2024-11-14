@@ -320,6 +320,12 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
         wall_th;
     plate_yoffset = 0;
     plate_r = 10;
+    
+    guide_th = wall_th;
+    guide_h = plate_th + spacer_h + AG_thickness(winder) + spool_h/2;
+    guide_base_w = 10*string_d;
+    guide_base_h = plate_th;
+    guide_d = 5*string_d;
 
     c = corners(plate_l, plate_w, plate_r, center=true);
     // Mounting bolt holes for both motors.
@@ -460,23 +466,24 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
 
     module guide() {
         rotate([90, 0, 0]) {
-            difference() {
-                linear_extrude(wall_th) {
+            translate([0, 0, guide_th/2]) difference() {
+                linear_extrude(guide_th, center=true) {
                     difference() {
                         hull() {
-                            circle(d=5*string_d);
-                            translate([-10*string_d/2, -(plate_th + spacer_h + AG_thickness(winder) + spool_h/2)]) square([10*string_d, plate_th]);
+                            circle(d=guide_d);
+                            translate([-guide_base_w/2, -guide_h])
+                                square([guide_base_w, guide_base_h]);
                         }
                     }
                 }
-                translate([0, 0, wall_th/2]) {
-                    rotate_extrude(convexity=4) {
-                        difference() {
-                            translate([0, -(wall_th+nozzle_d)/2])
-                                square([string_d+nozzle_d/2, wall_th+nozzle_d]);
-                            translate([string_d + nozzle_d/2, 0])
-                                circle(d=string_d+nozzle_d);
-                        }
+                rotate_extrude(convexity=4) {
+                    hole_th = guide_th + nozzle_d;
+                    hole_d = string_d + nozzle_d;
+                    difference() {
+                        translate([0, -hole_th/2])
+                            square([hole_d, hole_th]);
+                        translate([hole_d, 0])
+                            circle(d=hole_d);
                     }
                 }
             }
@@ -555,9 +562,7 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
             }
         }
 
-        translate([-dx, plate_w/2, plate_th + spacer_h + AG_thickness(winder) + spool_h/2]) {
-            guide();
-        }
+        translate([-dx, plate_w/2, guide_h]) guide();
     }
     
     show_assembled = $preview;
