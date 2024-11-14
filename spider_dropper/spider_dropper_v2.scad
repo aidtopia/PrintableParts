@@ -20,7 +20,6 @@ Motor = "Aslong JGY-370 12 VDC Worm Gearmotor"; // ["FrightProps Deer Motor", "M
 Include_Base_Plate = true;
 Include_Drive_Gear = true;
 Include_Spool_Assembly = true;
-Include_Tension_Idler = true;
 Include_Button = false;
 
 module __Customizer_Limit__ () {}
@@ -322,19 +321,6 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
     plate_yoffset = 0;
     plate_r = 10;
 
-    idler_d = 2*string_d + min_th + bearing608_od;
-    idler_arm_th = spacer_h - min_th;
-    idler_z0 = spool_z0;
-    idler_z1 = spool_z1;
-    idler_axle_l = idler_z1 - idler_z0 + min_th;
-    idler_axle_d = bearing608_id;
-    idler_spacer_h = idler_z0 - idler_arm_th - plate_th;
-    idler_spacer_d = bearing608_id + 3;
-
-    bracket_w = plate_w;
-    bracket_l = motor_h;
-    bracket_r = plate_r;
-
     c = corners(plate_l, plate_w, plate_r, center=true);
     // Mounting bolt holes for both motors.
     // [0] = [x, y] position
@@ -574,27 +560,6 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
         }
     }
     
-    module tension_arm() {
-        arm_l = spool_flange_d/2 + min_th + idler_d/2;
-        linear_extrude(idler_arm_th) {
-            difference() {
-                hull() {
-                    offset(3) circle(d=spacer_d);
-                    translate([-arm_l, 0]) circle(d=idler_spacer_d);
-                }
-                offset(nozzle_d/2) circle(d=spacer_d);
-            }
-        }
-        translate([-arm_l, 0, idler_arm_th]) {
-            linear_extrude(idler_spacer_h) circle(d=idler_spacer_d);
-            translate([0, 0, idler_spacer_h])
-                linear_extrude(idler_axle_l) circle(d=idler_axle_d);
-        }
-    }
-    
-    module tension_idler() {
-    }
-    
     show_assembled = $preview;
     
     if (Include_Base_Plate) base_plate();
@@ -615,15 +580,6 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
         translate(t) rotate(r) spool_assembly();
     }
 
-    if (Include_Tension_Idler) {
-        t = show_assembled ?
-            [-dx, 0, plate_th] :
-            [plate_xoffset - plate_l/2 - (spacer_d+8)/2, -plate_w/3, 0];
-        r = show_assembled ? [0, 0, 0] : [0, 0, -90];
-        translate(t) rotate(r) tension_arm();
-        tension_idler();
-    }
-    
     if (Include_Button) {
         t = show_assembled ?
             [-dx + spool_d/4, spool_d/4, plate_th + spacer_h + AG_thickness(winder) + spool_h] :
