@@ -54,7 +54,7 @@ module PVC_corner(od, l=inch(1.25), wall_th=3, nozzle_d=0.4) {
                 difference() {
                     $fa=6;
                     offset(delta=wall_th) square(od, center=true);
-                    offset(nozzle_d) circle(d=od);
+                    offset(nozzle_d/2) circle(d=od);
                 }
             }
             translate([0, 0, l-1]) {
