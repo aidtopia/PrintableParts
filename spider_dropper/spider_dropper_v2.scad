@@ -20,13 +20,11 @@ Motor = "Aslong JGY-370 12 VDC Worm Gearmotor"; // ["FrightProps Deer Motor", "M
 Include_Base_Plate = true;
 Include_Drive_Gear = true;
 Include_Spool_Assembly = true;
-Include_Nut = true;
 Include_Button = false;
 
 module __Customizer_Limit__ () {}
 
 use <aidgear.scad>
-use <aidthread.scad>
 use <honeycomb.scad>
 
 function inch(x) = x * 25.4;
@@ -307,12 +305,6 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
     axle_l = 2*bearing608_th + nozzle_d;
     axle_d = bearing608_id;
 
-    axle_screw_pitch = 1.25;
-    axle_screw_d = floor(axle_d);
-    axle_screw_l = 4*axle_screw_pitch;
-    axle_nut_l = axle_screw_l + min_th;
-    axle_nut_d = axle_screw_d + 2*wall_th;
-
     button_d = 5*string_d;
     
     spacer_h = drive_z0 - plate_th;
@@ -566,26 +558,11 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
                 cylinder(h=axle_l-nozzle_d, d=axle_d);
                 translate([0, 0, axle_l-nozzle_d]) {
                     cylinder(h=nozzle_d, d1=axle_d, d2=axle_d-nozzle_d);
-                    translate([0, 0, nozzle_d]) {
-                        AT_threads(axle_screw_l, axle_screw_d,
-                                   axle_screw_pitch, tap=false,
-                                   nozzle_d=nozzle_d);
-                    }
                 }
             }
         }
 
         translate([-dx, plate_w/2, guide_h]) guide();
-    }
-    
-    module nut() {
-        difference() {
-            linear_extrude(axle_nut_l, convexity=8) {
-                circle(d=axle_nut_d, $fn=6);
-            }
-            AT_threads(axle_screw_l, axle_screw_d, axle_screw_pitch,
-                       tap=true, nozzle_d=nozzle_d);
-        }
     }
     
     show_assembled = $preview;
@@ -606,14 +583,6 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
             [plate_xoffset-(spool_flange_d+2)/2, plate_yoffset+(plate_w+spool_flange_d)/2+1, spool_h + AG_thickness(winder) + plate_th + spacer_h];
         r = show_assembled ? [0, 0, 0] : [180, 0, 0];
         translate(t) rotate(r) spool_assembly();
-    }
-
-    if (Include_Nut) {
-        t = show_assembled ?
-            [-dx, 0, plate_th + spacer_h + axle_l] : [0, 0, axle_nut_l];
-        r = show_assembled ?
-            [0, 0, 0] : [180, 0, 0];
-        translate(t) rotate(r) nut();
     }
 
     if (Include_Button) {
