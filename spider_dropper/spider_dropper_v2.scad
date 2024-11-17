@@ -464,6 +464,45 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
         }
     }
 
+    module axle() {
+        // This generates the spacer, which rises through the base plate,
+        // the axle itself, the chamfer at the top, a hollow space inside
+        // that makes the axle stronger because it generates more
+        // perimeters, and a conical indentation at the top end for
+        // alignment and support from and upper plate.
+        recess_d = 4;
+        recess_h = recess_d/2;
+        chamfer = 1;
+        z0 = 0;
+        z1 = z0 + plate_th;
+        z2 = z1 + spacer_h;
+        z3 = z2 + axle_l;
+        z4 = z3 + chamfer;
+        r0 = 0;
+        r3 = r0 + axle_d/2;
+        r1 = r3 - 4*nozzle_d;
+        r2 = r0 + recess_d/2;
+        r4 = z0 + spacer_d/2;
+        r5 = r4 + plate_th/2;
+        points = [
+            [r0, z0],
+            [r0, mid(z0, z1)],
+            [r1, mid(z0, z1) + (r1 - r0)],
+            [r1, z4 - recess_h - 1 - (r1 - r0)/2],
+            [r0, z4 - recess_h - 1],
+            [r0, z4 - recess_h],
+            [r2, z4],
+            [r3-chamfer, z4],
+            [r3, z3],
+            [r3, z2],
+            [r4, z2],
+            [r4, z1],
+            [r5, z1],
+            [r5, z0]
+        ];
+        rotate_extrude(convexity=4) polygon(points);
+    }
+
     module guide() {
         rotate([90, 0, 0]) {
             translate([0, 0, guide_th/2]) difference() {
@@ -552,16 +591,7 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
                 }
             }
         }
-        translate([-dx, 0]) {
-            cylinder(h=plate_th+spacer_h, d=spacer_d);
-            translate([0, 0, plate_th + spacer_h]) {
-                cylinder(h=axle_l-nozzle_d, d=axle_d);
-                translate([0, 0, axle_l-nozzle_d]) {
-                    cylinder(h=nozzle_d, d1=axle_d, d2=axle_d-nozzle_d);
-                }
-            }
-        }
-
+        translate([-dx, 0]) axle();
         translate([-dx, plate_w/2, guide_h]) guide();
     }
     
