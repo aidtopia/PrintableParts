@@ -1,4 +1,5 @@
 // PVC pipe connectors for Tinker Toy-like construction.
+// Inspired, in part, by Slant3D: https://www.youtube.com/watch?v=csUGcIPNNkk
 
 use <aidslant.scad>
 
@@ -60,6 +61,13 @@ module PVC_corner(od, l=inch(1.25), wall_th=3, nozzle_d=0.4) {
             translate([0, 0, l-1]) {
                 cylinder(h=2, d1=od+nozzle_d, d2=od+nozzle_d+3);
             }
+            // Chamfer off the sharp points at the corners.
+            cut = 2*wall_th;
+            r = sqrt(2*(od/2 + wall_th)*(od/2 + wall_th));
+            for (theta=[45:90:360])
+                rotate([0, 0, theta])
+                    translate([r, 0, sleeve_l + cut/2])
+                        rotate([0, 45, 0]) cube(cut, center=true);
         }
     }
     
