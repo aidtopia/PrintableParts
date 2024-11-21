@@ -20,6 +20,7 @@ Motor = "Aslong JGY-370 12 VDC Worm Gearmotor"; // ["FrightProps Deer Motor", "M
 Include_Base_Plate = true;
 Include_Drive_Gear = true;
 Include_Spool_Assembly = true;
+//Include_Guide_Arm = true;
 Include_Button = false;
 
 module __Customizer_Limit__ () {}
@@ -327,6 +328,12 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
     guide_base_h = plate_th;
     guide_d = 5*string_d;
 
+    //hub_th = spacer_h - nozzle_d;
+    //hub_d = spacer_d + 2*wall_th;
+    //arm_l = spool_flange_d/2 + guide_th/2 + min_th;
+    //arm_w = hub_d;
+    //arm_th = min(wall_th, hub_th);
+
     c = corners(plate_l, plate_w, plate_r, center=true);
     // Mounting bolt holes for both motors.
     // [0] = [x, y] position
@@ -503,21 +510,21 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
         rotate_extrude(convexity=4) polygon(points);
     }
 
-    module guide() {
+    module guide(th=guide_th, h=guide_h, base_w=guide_base_w, base_h=guide_base_h, id=string_d, od=guide_d, nozzle_d=0.4) {
         rotate([90, 0, 0]) {
-            translate([0, 0, guide_th/2]) difference() {
-                linear_extrude(guide_th, center=true) {
+            translate([0, 0, th/2]) difference() {
+                linear_extrude(th, center=true) {
                     difference() {
                         hull() {
-                            circle(d=guide_d);
-                            translate([-guide_base_w/2, -guide_h])
-                                square([guide_base_w, guide_base_h]);
+                            circle(d=od);
+                            translate([-base_w/2, -h])
+                                square([base_w, base_h]);
                         }
                     }
                 }
                 rotate_extrude(convexity=4) {
-                    hole_th = guide_th + nozzle_d;
-                    hole_d = string_d + nozzle_d;
+                    hole_th = th + nozzle_d;
+                    hole_d = id + nozzle_d;
                     difference() {
                         translate([0, -hole_th/2])
                             square([hole_d, hole_th]);
@@ -528,6 +535,28 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
             }
         }
     }
+    
+//    module guide_arm() {
+//        linear_extrude(arm_th, convexity=6) {
+//            difference() {
+//                hull() {
+//                    offset(wall_th) circle(d=spacer_d);
+//                    translate([0, arm_l]) {
+//                        square([arm_w, guide_th], center=true);
+//                    }
+//                }
+//                offset(nozzle_d/2) circle(d=spacer_d);
+//            }        
+//        }
+//        linear_extrude(hub_th, convexity=4) {
+//            difference() {
+//                offset(wall_th) circle(d=spacer_d);
+//                offset(nozzle_d/2) circle(d=spacer_d);
+//            }
+//        }
+//        translate([0, arm_l + guide_th/2, guide_h-plate_th])
+//            guide(th=guide_th, h=guide_h-plate_th, base_w=arm_w, base_h=arm_th, nozzle_d=nozzle_d);
+//    }
 
     module base_plate() {
         module footprint() {
@@ -592,7 +621,7 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
             }
         }
         translate([-dx, 0]) axle();
-        translate([-dx, plate_w/2, guide_h]) guide();
+        translate([-dx, plate_w/2, guide_h]) guide(nozzle_d=nozzle_d);
     }
     
     show_assembled = $preview;
@@ -614,6 +643,14 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
         r = show_assembled ? [0, 0, 0] : [180, 0, 0];
         translate(t) rotate(r) spool_assembly();
     }
+
+//    if (Include_Guide_Arm) {
+//        t = show_assembled ?
+//            [-dx, 0, plate_th] :
+//            [plate_xoffset - plate_l/2 - arm_w/2 - 1, arm_l, 0];
+//        r = show_assembled ? [0, 0, 0] : [0, 0, 180];
+//        translate(t) rotate(r) guide_arm();        
+//    }
 
     if (Include_Button) {
         t = show_assembled ?
