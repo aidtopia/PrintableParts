@@ -48,7 +48,7 @@ module fillet(
 }
 
 module PVC_corner(od, l=inch(1.25), wall_th=3, nozzle_d=0.4) {
-    module sleeve(l, nozzle_d=0.4) {
+    module sleeve(l, nozzle_d=nozzle_d) {
         $fs = nozzle_d/2;
         difference() {
             linear_extrude(l, convexity=6) {
@@ -72,14 +72,10 @@ module PVC_corner(od, l=inch(1.25), wall_th=3, nozzle_d=0.4) {
         }
     }
     
-    module countersunk_screw_hole(nozzle_d=0.4) {
-        // For typical #6 flat head wood screw.
-        head_h  = inch(0.083);
-        head_r  = inch(0.244) / 2;
-        shaft_r = inch(0.138) / 2;
+    module countersunk_screw_hole(depth, nozzle_d=nozzle_d) {
+        head_r  = head_d/2;
+        shaft_r = shaft_d/2;
         nudge   = nozzle_d/2;  // for printing tolerance
-        depth   = wall_th + 1;
-        
         points = [
             [0,             1],
             [head_r+nudge,  1],
@@ -91,15 +87,48 @@ module PVC_corner(od, l=inch(1.25), wall_th=3, nozzle_d=0.4) {
         rotate_extrude($fs=nozzle_d/2) polygon(points);
     }
 
-    module sleeve_with_screw(l, nozzle_d=0.4) {
+    module sleeve_with_screw(l, nozzle_d=nozzle_d) {
         difference() {
-            sleeve(l, nozzle_d=nozzle_d);
-            translate([sleeve_w/2, 0, screw_dl])
+            union() {
+                sleeve(l, nozzle_d=nozzle_d);
+                translate([sleeve_w/2, 0, screw_dl])
+                    rotate([0, 90, 0])
+                        cylinder(h=boss_h, d1=boss_d1, d2=boss_d2);
+                translate([0, sleeve_w/2, screw_dl])
+                    rotate([-90, 0, 0])
+                        cylinder(h=boss_h, d1=boss_d1, d2=boss_d2);
+            }
+            translate([sleeve_w/2 + boss_h, 0, screw_dl])
                 rotate([0, 90, 0])
-                    countersunk_screw_hole(nozzle_d);
-            translate([0, sleeve_w/2, screw_dl])
+                    countersunk_screw_hole(wall_th + boss_h, nozzle_d);
+            translate([0, sleeve_w/2 + boss_h, screw_dl])
                 rotate([-90, 0, 0])
-                    countersunk_screw_hole(nozzle_d);
+                    countersunk_screw_hole(wall_th + boss_h, nozzle_d);
+        }
+    }
+    
+    module tab(nozzle_d=nozzle_d) {
+        translate([0, 0, -sleeve_w/2]) {
+            difference() {
+                union() {
+                    linear_extrude(wall_th) {
+                        hull() {
+                            polygon([
+                                [sleeve_w/2, sleeve_w/2],
+                                [sleeve_w/2, screw_dl],
+                                [screw_dl, sleeve_w/2]
+                            ]);
+                            translate([sleeve_w, sleeve_w]) circle(boss_d2);
+                        }
+                    }
+                    translate([sleeve_w, sleeve_w, wall_th]) {
+                        cylinder(h=boss_h, d1=boss_d1, d2=boss_d2);
+                    }
+                }
+                translate([sleeve_w, sleeve_w, wall_th + boss_h]) {
+                    countersunk_screw_hole(wall_th + boss_h, nozzle_d);
+                }
+            }
         }
     }
 
@@ -108,15 +137,29 @@ module PVC_corner(od, l=inch(1.25), wall_th=3, nozzle_d=0.4) {
     sleeve_l = l + sleeve_w;
     screw_dl = sleeve_w + l/2;
 
+    // For typical #6 flat head wood screw.
+    head_h  = inch(0.083);
+    head_d  = inch(0.244);
+    shaft_d = inch(0.138);
+
+    boss_d1 = 3*(head_d+nozzle_d);
+    boss_d2 = 1.5*(head_d+nozzle_d);
+    boss_h  = 2*head_h;
+
     clip_negative_z()
     translate([0, 0, -1/3*sqrt(3*sleeve_w*sleeve_w)])
     slant3d()
     translate([sleeve_w/2, sleeve_w/2, sleeve_w/2])
     union() {
+        // A cube where all the axes come together.
         cube(sleeve_w, center=true);
+
+        // A sleeve along each major axis.
         sleeve_with_screw(sleeve_l);
         rotate([0, 90, 0]) rotate([0, 0, 90]) sleeve_with_screw(sleeve_l);
         rotate([-90, 0, 0]) rotate([0, 0, -90]) sleeve_with_screw(sleeve_l);
+
+        // Fillets for strong/attractive joints.
         translate([sleeve_w/2, sleeve_w/2, 0])
             fillet(r=3, l=sleeve_w, center=true);
         translate([sleeve_w/2, 0, sleeve_w/2]) rotate([90, 0, 0])
@@ -131,6 +174,11 @@ module PVC_corner(od, l=inch(1.25), wall_th=3, nozzle_d=0.4) {
                 rotate([90, 0, 90])
                 fillet(r=3, l=sleeve_w, center=true);
             }
+
+        // Tabs for mounting
+        tab(nozzle_d);
+        rotate([0, 90, 0]) rotate([0, 0, 90]) tab(nozzle_d);
+        rotate([-90, 0, 0]) rotate([0, 0, -90]) tab(nozzle_d);
     }
 }
 
