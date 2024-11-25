@@ -338,12 +338,6 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
     guide_base_h = plate_th;
     guide_d = 5*string_d;
 
-    //hub_th = spacer_h - nozzle_d;
-    //hub_d = spacer_d + 2*wall_th;
-    //arm_l = spool_flange_d/2 + guide_th/2 + min_th;
-    //arm_w = hub_d;
-    //arm_th = min(wall_th, hub_th);
-
     c = corners(plate_l, plate_w, plate_r, center=true);
     // Mounting bolt holes for both motors.
     // [0] = [x, y] position
@@ -558,28 +552,6 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
         }
     }
     
-//    module guide_arm() {
-//        linear_extrude(arm_th, convexity=6) {
-//            difference() {
-//                hull() {
-//                    offset(wall_th) circle(d=spacer_d);
-//                    translate([0, arm_l]) {
-//                        square([arm_w, guide_th], center=true);
-//                    }
-//                }
-//                offset(nozzle_d/2) circle(d=spacer_d);
-//            }        
-//        }
-//        linear_extrude(hub_th, convexity=4) {
-//            difference() {
-//                offset(wall_th) circle(d=spacer_d);
-//                offset(nozzle_d/2) circle(d=spacer_d);
-//            }
-//        }
-//        translate([0, arm_l + guide_th/2, guide_h-plate_th])
-//            guide(th=guide_th, h=guide_h-plate_th, base_w=arm_w, base_h=arm_th, nozzle_d=nozzle_d);
-//    }
-
     module base_plate() {
         module footprint() {
             hull() for_each_position(c) circle(r=plate_r);
@@ -665,14 +637,6 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
         r = show_assembled ? [0, 0, 0] : [180, 0, 0];
         translate(t) rotate(r) spool_assembly();
     }
-
-//    if (Include_Guide_Arm) {
-//        t = show_assembled ?
-//            [-dx, 0, plate_th] :
-//            [plate_xoffset - plate_l/2 - arm_w/2 - 1, arm_l, 0];
-//        r = show_assembled ? [0, 0, 0] : [0, 0, 180];
-//        translate(t) rotate(r) guide_arm();        
-//    }
 
     if (Include_Button) {
         t = show_assembled ?
