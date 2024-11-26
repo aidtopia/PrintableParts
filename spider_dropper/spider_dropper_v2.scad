@@ -220,6 +220,21 @@ module circular_arrow(r, theta0=0, theta1=360, th=1) {
     ]);
 }
 
+// Works like difference (for 2D) but adds back outlines of the shapes
+// that were cut away.
+module cutaway(outline=1) {
+    difference() {
+        if ($children > 0) children(0);
+        if ($children > 1) children([1:$children-1]);
+    }
+    if ($children > 1) {
+        difference() {
+            offset(max(outline, 0)) children([1:$children-1]);
+            offset(min(outline, 0)) children([1:$children-1]);
+        }
+    }
+}
+
 module sector(r=1, sweep=30) {
     intersection() {
         circle(r=r);
@@ -354,6 +369,12 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
         [[-deer_mount_dx2/2, -deer_mount_dy2], deer_mounting_screw_head_d, deer_mounting_screw_head_h, deer_mounting_screw_free_d],
         [[ deer_mount_dx2/2, -deer_mount_dy2], deer_mounting_screw_head_d, deer_mounting_screw_head_h, deer_mounting_screw_free_d]
     ];
+
+    // The "slightly smarter" version uses a small PCB that attaches to
+    // the motor side of the build plate.  These dimensions must match
+    // those used in the PCB layout.
+    pcb_w = 20;
+    pcb_l = 80;
 
     module drive_gear() {
         difference() {
@@ -557,58 +578,50 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
             hull() for_each_position(c) circle(r=plate_r);
         }
 
-        translate([0, 0, plate_th/2])
-        difference() {
-            linear_extrude(plate_th, convexity=8, center=true) {
-                difference() {
-                    union() {
-                        translate([plate_xoffset, plate_yoffset, 0]) {
-                            bounded_honeycomb(plate_l, plate_w, 14,
-                                              min_th, center=true) {
-                                footprint();
-                            }
-                            difference() {
-                                footprint();
-                                offset(-wall_th) footprint();
-                            }
-                        }
-                        offset(3*nozzle_d) circle(d=motor_base_d+nozzle_d);
-                    }
-
-                    // cut away for the motor base (around the shaft)
-                    circle(d=motor_base_d+nozzle_d);
-                    // cut away the honeycomb for the motor mounting screws
-                    rotate([0, 0, -90]) {
-                        for (hole=mounting_holes) {
-                            translate(hole[0])
-                                offset(nozzle_d) circle(d=hole[1]);
-                        }
-                    }
-                }
-                difference() {
-                    // add back supports for the mounting screws
-                    rotate([0, 0, -90]) {
-                        for (hole=mounting_holes) {
-                            translate(hole[0]) {
+        translate([0, 0, plate_th/2]) {
+            difference() {
+                linear_extrude(plate_th, convexity=8, center=true) {
+                    cutaway(outline=min_th) {
+                        union() {
+                            translate([plate_xoffset, plate_yoffset, 0]) {
+                                bounded_honeycomb(plate_l, plate_w, 14,
+                                                  min_th, center=true) {
+                                    footprint();
+                                }
                                 difference() {
-                                    offset(3*nozzle_d) circle(d=hole[1]+nozzle_d);
-                                    circle(d=hole[3]+nozzle_d);
+                                    footprint();
+                                    offset(-wall_th) footprint();
+                                }
+                            }
+                            // add bosses for the motor mounting screws
+                            rotate([0, 0, -90]) {
+                                for (hole=mounting_holes) {
+                                    translate(hole[0]) {
+                                        offset(min_th) circle(d=hole[1]+nozzle_d);
+                                    }
                                 }
                             }
                         }
+                        // cutaways
+                        circle(d=motor_base_d+nozzle_d);
+                        rotate([0, 0, -90]) {
+                            for (hole=mounting_holes) {
+                                translate(hole[0]) circle(d=hole[3]+nozzle_d);
+                            }
+                        }
+                        translate([0, jgy_w/2 + pcb_w/2]) {
+                            square([pcb_l, pcb_w], center=true);
+                        }
                     }
-                    // cut away the opening for the base around the motor shaft again
-                    // because the screw mounts for the JGY interfere with the base
-                    // of the deer motor
-                    circle(d=motor_base_d);
                 }
-            }
-            // recess the mounting screws
-            rotate([0, 0, -90]) {
-                for (hole=mounting_holes) {
-                    translate([hole[0][0], hole[0][1], plate_th-hole[2]]) {
-                        linear_extrude(plate_th, convexity=8, center=true) {
-                            circle(d=hole[1] + nozzle_d);
+
+                // recess the mounting screws
+                rotate([0, 0, -90]) {
+                    for (hole=mounting_holes) {
+                        translate([hole[0][0], hole[0][1], plate_th-hole[2]]) {
+                            linear_extrude(plate_th, center=true) {
+                                circle(d=hole[1] + nozzle_d);
+                            }
                         }
                     }
                 }
@@ -617,7 +630,7 @@ module spider_dropper(drop_distance=inch(24), motor="deer", nozzle_d=0.4) {
         translate([-dx, 0]) axle();
         translate([-dx, plate_w/2, guide_h]) guide(nozzle_d=nozzle_d);
     }
-    
+
     show_assembled = $preview;
     
     if (Include_Base_Plate) base_plate();
