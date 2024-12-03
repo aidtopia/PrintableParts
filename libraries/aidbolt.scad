@@ -107,7 +107,8 @@ machine_screws = [
             ["pan",             6.0,        2.4,        0.0         ]],
         [ // nut                nut_w       nut_h           sides
             ["hex",             5.5,        2.4,            6       ],
-            ["insert",          thou(199),  3.8,            1       ]]],
+            ["insert",          thou(199),  3.8,            1       ],
+            ["square",          5.3,        2.2,            4       ]]],
     ["M4",      4.5,        4.3,        3.5,        0.70,
         [ // head shape         head_d      head_h      sink_h
             ["flat",            7.5,        0.0,        2.20        ],
