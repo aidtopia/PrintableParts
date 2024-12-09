@@ -1,11 +1,105 @@
 // Bracket to hold FasTrak Flex transponder to windshield with suction cup.
 // Adrian McCarthy 2023-06-20
 
-module foldup_etag_bracket(th=2, layer_h=0.2, nozzle_d=0.4) {
-    etag_l = 110;
-    etag_w = 36;
-    etag_h = 15;
+etag_l = 111;
+etag_w = 36;
+etag_h = 15;
+
+etag_logo_l = 35;
+etag_logo_h = 28;
     
+module etag_bracket2(th=2, nozzle_d=0.4) {
+    suction_od = 30;
+    suction_id = 6.5;
+    suction_key = 10.5;
+    suction_dx = max(suction_od, etag_l/1.5)/2;
+    
+    keyhole_h = suction_key/2 + suction_id;
+
+    $fs = nozzle_d/2;
+
+    module keyhole() {
+        hull() {
+            circle(d=suction_id + nozzle_d);
+            translate([0, -keyhole_h])
+                circle(d=suction_id + nozzle_d);
+        }
+        translate([0, -keyhole_h])
+            circle(d=suction_key + nozzle_d);
+    }
+    
+    module slot() {
+        hull() {
+            circle(d=suction_key + nozzle_d);
+            translate([0, -keyhole_h])
+                circle(d=suction_key + nozzle_d);
+        }
+    }
+    
+    module logo_window() {
+        offset(th) offset(-th)
+            square([etag_logo_l, etag_logo_h], center=true);
+    }
+
+    linear_extrude(2, convexity=10) {
+        difference() {
+            offset(r=th+nozzle_d/2)
+                square([etag_l, etag_w], center=true);
+            translate([-suction_dx, 0]) keyhole();
+            translate([ suction_dx, 0]) keyhole();
+            logo_window();
+        }
+    }
+    translate([0, 0, 2]) {
+        linear_extrude(5, convexity=10) {
+            difference() {
+                offset(r=th+nozzle_d/2)
+                    square([etag_l, etag_w], center=true);
+                translate([-suction_dx, 0]) slot();
+                translate([ suction_dx, 0]) slot();
+                logo_window();
+            }
+        }
+        translate([0, 0, 5]) {
+            difference() {
+                linear_extrude(etag_h+nozzle_d, convexity=10) {
+                    difference() {
+                        offset(r=th+nozzle_d/2)
+                            square([etag_l, etag_w], center=true);
+                        offset(r=nozzle_d/2)
+                            square([etag_l, etag_w], center=true);
+                    }
+                }
+                translate([0, etag_w/2, etag_h/2+nozzle_d]) {
+                    rotate([90, 0, 0]) {
+                        linear_extrude(etag_w, convexity=4, center=true) {
+                            offset(r=th+nozzle_d/2)
+                                offset(r=-th)
+                                    square([etag_l, etag_h], center=true);
+                        }
+                    }
+                }
+            }
+            translate([0, 0, etag_h+nozzle_d/2]) {
+                linear_extrude(th, convexity=10) {
+                    difference() {
+                        offset(r=th+nozzle_d/2)
+                            square([etag_l, etag_w], center=true);
+                        polygon([
+                            [-(etag_l-1*th)/2, etag_w/2+th+nozzle_d],
+                            [-(etag_l-4*th)/2, -etag_w/2],
+                            [ (etag_l-4*th)/2, -etag_w/2],
+                            [ (etag_l-1*th)/2, etag_w/2+th+nozzle_d]
+                        ]);
+                    }
+                }
+            }
+        }
+    }
+}
+
+// This version is too flimsy.
+module foldup_etag_bracket(th=2, layer_h=0.2, nozzle_d=0.4) {
     suction_od = 30;
     suction_id = 6.5;
     suction_key = 10.5;
@@ -159,96 +253,12 @@ module foldup_etag_bracket(th=2, layer_h=0.2, nozzle_d=0.4) {
 }
 
 
-
-module etag_bracket2(th=2, nozzle_d=0.4) {
-    etag_l = 110;
-    etag_w = 36;
-    etag_h = 15;
-    
-    suction_od = 30;
-    suction_id = 6.5;
-    suction_key = 10.5;
-    suction_dx = max(suction_od, etag_l/2)/2;
-    
-    keyhole_h = suction_key/2 + suction_id;
-
-    $fs = nozzle_d/2;
-
-    module keyhole() {
-        hull() {
-            circle(d=suction_id + nozzle_d);
-            translate([0, -keyhole_h])
-                circle(d=suction_id + nozzle_d);
-        }
-        translate([0, -keyhole_h])
-            circle(d=suction_key + nozzle_d);
-    }
-    
-    module slot() {
-        hull() {
-            circle(d=suction_key + nozzle_d);
-            translate([0, -keyhole_h])
-                circle(d=suction_key + nozzle_d);
-        }
-    }
-
-    linear_extrude(2, convexity=10) {
-        difference() {
-            offset(r=th+nozzle_d/2)
-                square([etag_l, etag_w], center=true);
-            translate([-suction_dx, 0]) keyhole();
-            translate([ suction_dx, 0]) keyhole();
-        }
-    }
-    translate([0, 0, 2]) {
-        linear_extrude(5, convexity=10) {
-            difference() {
-                offset(r=th+nozzle_d/2)
-                    square([etag_l, etag_w], center=true);
-                translate([-suction_dx, 0]) slot();
-                translate([ suction_dx, 0]) slot();
-            }
-        }
-        translate([0, 0, 5]) {
-            difference() {
-                linear_extrude(etag_h+nozzle_d, convexity=10) {
-                    difference() {
-                        offset(r=th+nozzle_d/2)
-                            square([etag_l, etag_w], center=true);
-                        offset(r=nozzle_d/2)
-                            square([etag_l, etag_w], center=true);
-                    }
-                }
-                translate([0, etag_w/2, etag_h/2+nozzle_d]) {
-                    rotate([90, 0, 0]) {
-                        linear_extrude(etag_w, convexity=4, center=true) {
-                            offset(r=th+nozzle_d/2)
-                                offset(r=-th)
-                                    square([etag_l, etag_h], center=true);
-                        }
-                    }
-                }
-            }
-            translate([0, 0, etag_h+nozzle_d/2]) {
-                linear_extrude(th, convexity=10) {
-                    difference() {
-                        offset(r=th+nozzle_d/2)
-                            square([etag_l, etag_w], center=true);
-                        polygon([
-                            [-(etag_l-1*th)/2, etag_w/2+th+nozzle_d],
-                            [-(etag_l-4*th)/2, -etag_w/2],
-                            [ (etag_l-4*th)/2, -etag_w/2],
-                            [ (etag_l-1*th)/2, etag_w/2+th+nozzle_d]
-                        ]);
-                    }
-                }
-            }
-        }
-    }
-    
-    
-    
+module etag_bracket_upright(th=2, nozzle_d=0.4) {
+    // Depsite overhangs, it might be better for heat dissipation and strength
+    // to print upright rather than on its back.
+    translate([0, 0, etag_h+2*th+nozzle_d])
+        rotate([90, 0, 0])
+            etag_bracket2(th=th, nozzle_d=nozzle_d);
 }
 
-//foldup_etag_bracket(layer_h=0.3);
-etag_bracket2();
+etag_bracket_upright();
