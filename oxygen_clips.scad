@@ -12,19 +12,28 @@
 //
 // Adrian McCarthy 2024-06-09
 
+// The Command-brand double-sided tape strips do not stick reliably
+// to PLA nor to PETG.  So here's a nail-on version:
+
 module oxygen_clip(nozzle_d = 0.4) {
+    $fs = nozzle_d/2;
+
     id = 6.5 + nozzle_d;
-    th = 2.2;
-    tape_w = 12.5;
-    tape_l = 16.5;  // just the sticky part
+    th = 2.4;
+    hook_l = 16.5;
+    nail_d = 2;
+    nail_head_d = 4;
+    tab_l = 3*nail_head_d;
+    plate_l = hook_l + tab_l;
+    plate_w = 12.5;
 
     od = id + 2*th;
 
     r = (id+od)/2/2;
     x0 = 0 - r;
-    x1 = x0 + tape_w;
-    y0 = 0 - r;
-    y1 = 0 + r;
+    x1 = x0 + plate_w;
+    y0 = 0 - (r + nozzle_d);
+    y1 = 0 + (r + nozzle_d);
 
     profile = [
         [x1, y1+th, th],
@@ -32,21 +41,46 @@ module oxygen_clip(nozzle_d = 0.4) {
         [x0, 0, th]
     ];
 
-    linear_extrude(tape_l + nozzle_d) {
-        hull() {
-            translate([x1, y1+th]) circle(d=th, $fs=nozzle_d/2);
-            translate([x0, y1+th]) circle(d=th, $fs=nozzle_d/2);
+    // Ceiling plate
+    translate([0, y1]) {
+        difference() {
+            linear_extrude(plate_l, convexity=8) {
+                union() {
+                    hull() {
+                        translate([x1, th]) circle(d=th);
+                        translate([x0, th]) circle(d=th);
+                    }
+                    translate([0, 0.75*th]) {
+                        translate([r+th, 0]) circle(d=th);
+                        hull() {
+                            translate([-nail_head_d/2, 0]) circle(d=th);
+                            translate([ nail_head_d/2, 0]) circle(d=th);
+                        }
+                    }
+                }
+            }
+            translate([0, th, plate_l - 1/3*tab_l]) {
+                rotate([-90, 0, 0]) {
+                    cylinder(d=nail_d+nozzle_d, h=2*th, center=true);
+                    translate([0, 0, -0.75*th]) {
+                        cylinder(d=nail_head_d+nozzle_d, h=0.25*th);
+                    }
+                }
+            }
         }
+    }
+
+    // The j-shaped hook for the tubing.
+    linear_extrude(hook_l + nozzle_d, convexity=8) {
         hull() {
-            translate([x0, y1+th]) circle(d=th, $fs=nozzle_d/2);
-            translate([x0, 0    ]) circle(d=th, $fs=nozzle_d/2);
+            translate([x0, y1+th]) circle(d=th);
+            translate([x0, 0    ]) circle(d=th);
         }
-        translate([r+th, y1+0.75*th]) circle(d=th, $fs=nozzle_d/2);
         da = 6;
-        for (theta=[180+da:6:360]) {
+        for (theta=[180+da:da:360]) {
             hull() {
-                rotate([0, 0, theta])   translate([r, 0]) circle(d=th, $fs=nozzle_d/2);
-                rotate([0, 0, theta-da]) translate([r, 0]) circle(d=th, $fs=nozzle_d/2);
+                rotate([0, 0, theta])    translate([r, 0]) circle(d=th);
+                rotate([0, 0, theta-da]) translate([r, 0]) circle(d=th);
             }
         }
     }
@@ -103,6 +137,11 @@ module thumbtack_mount(nozzle_d=0.4) {
     }
 }
 
-oxygen_clip();
-//thumbtack_mount();
+for (row = [0:3]) {
+    for (col = [0:3]) {
+        translate([col*16, row*16, 0]) oxygen_clip();
+    }
+}
+
+
 
