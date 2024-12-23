@@ -36,7 +36,7 @@ module fillet(
 
     angle = acos(norm1 * norm2);
     assert(0 < angle && angle <= 90);
-    triangle = [ [0, 0], [r*cos(angle), r*sin(angle)], [r, 0] ];
+    triangle = [ [-0.0001, -0.0001], [r*cos(angle), r*sin(angle)], [r, -0.0001] ];
     c0 = triangle[1] + triangle[2];
 
     linear_extrude(l, center=center) {
@@ -113,10 +113,10 @@ module PVC_corner(od, l=inch(1.25), wall_th=3, nozzle_d=0.4) {
                 union() {
                     linear_extrude(wall_th) {
                         hull() {
-                            polygon([
-                                [sleeve_w/2, sleeve_w/2],
-                                [sleeve_w/2, screw_dl],
-                                [screw_dl, sleeve_w/2]
+                            #polygon([
+                                [sleeve_w/2-0.0001, sleeve_w/2],
+                                [sleeve_w/2-0.0001, screw_dl],
+                                [screw_dl, sleeve_w/2-0.0001]
                             ]);
                             translate([sleeve_w, sleeve_w]) circle(boss_d2);
                         }
@@ -126,7 +126,7 @@ module PVC_corner(od, l=inch(1.25), wall_th=3, nozzle_d=0.4) {
                     }
                 }
                 translate([sleeve_w, sleeve_w, wall_th + boss_h]) {
-                    countersunk_screw_hole(wall_th + boss_h, nozzle_d);
+                    countersunk_screw_hole(wall_th + boss_h + 1, nozzle_d);
                 }
             }
         }
