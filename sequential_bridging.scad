@@ -20,24 +20,28 @@
 
 nozzle_d = 0.4;
 layer_h = 0.3;
-$fs = nozzle_d/2;
 
 bore_d = 3.4;
 recess_d = 6;
 recess_h = 2.4;
 
-module sequential_bridges(layers=2, layer_h=0.3) {
+module sequential_bridges(lower_d, upper_d, layers=2, layer_h=0.3, nozzle_d=0.4) {
     module bridge(h) {
         translate([0, 0, -h]) {
             linear_extrude(h+0.0001) {
                 difference() {
-                    circle(d=recess_d+nozzle_d+0.0001);
-                    square([bore_d+nozzle_d, recess_d+nozzle_d+0.0001],
+                    circle(d=lower_d+nozzle_d+0.0001, $fs=nozzle_d/2);
+                    square([upper_d+nozzle_d, lower_d+nozzle_d+0.0001],
                            center=true);
                 }
             }
         }
     }
+
+    // It doesn't make sense to try to create sequential bridges unless
+    // the diameter of the lower part of the hole is wider than that of
+    // the upper hole.
+    assert(lower_d > upper_d);
 
     for (layer = [1:layers]) {
         theta = layer * 180/layers;
@@ -45,7 +49,8 @@ module sequential_bridges(layers=2, layer_h=0.3) {
     }
 }
 
-module floating_hole(bridging_layers=2) {
+module floating_hole(bridging_layers=2, nozzle_d=0.4) {
+    $fs = nozzle_d/2;
     ledge_h = bridging_layers * layer_h;
     
     difference() {
@@ -64,7 +69,7 @@ module floating_hole(bridging_layers=2) {
     }
     
     translate([0, 0, recess_h + ledge_h])
-        sequential_bridges(bridging_layers, layer_h);
+        sequential_bridges(recess_d, bore_d, bridging_layers, layer_h, nozzle_d);
 }
 
 floating_hole(bridging_layers=2);
