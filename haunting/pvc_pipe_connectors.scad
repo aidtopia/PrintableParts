@@ -182,6 +182,63 @@ module PVC_corner(od, l=inch(1.25), wall_th=3, nozzle_d=0.4) {
     }
 }
 
+// And experimental hanger that snaps onto PVC pipe.  I'm not sure
+// whether this will be made workable.  Test prints are pretty loose.
+module PVC_hanger(od=26.7, th=1.2, nozzle_d=0.4) {
+    return_r = 5;
+    points = [
+        each [
+            let(
+                x0 = od/2 + return_r, y0 = 0,
+                r = return_r
+            )
+            for (theta=[360:-12:180])
+                [x0 + r*cos(theta), y0 + r*sin(theta)]
+        ],
+        each [
+            let(
+                x0 = 0, y0 = 0,
+                r = od/2
+            )
+            for (theta=[0:3:270])
+                [x0 + r*cos(theta), y0 + r*sin(theta)]
+        ],
+        each [
+            let(
+                x0 = 0, y0 = -(od/2 + return_r),
+                r = return_r
+            )
+            for (theta=[90:-12:-90])
+                [x0 + r*cos(theta), y0 + r*sin(theta)]
+        ],
+        each [
+            let(
+                x0 = 0, y0 = -(od/2 + return_r),
+                r = return_r - th
+            )
+            for (theta=[-90:12:90])
+                [x0 + r*cos(theta), y0 + r*sin(theta)]
+        ],
+        each [
+            let(
+                x0 = 0, y0 = 0,
+                r = od/2 + th
+            )
+            for (theta=[270:-3:0])
+                [x0 + r*cos(theta), y0 + r*sin(theta)]
+        ],
+        each [
+            let(
+                x0 = od/2 + return_r, y0 = 0,
+                r = return_r - th
+            )
+            for (theta=[180:12:360])
+                [x0 + r*cos(theta), y0 + r*sin(theta)]
+        ]
+    ];
+    linear_extrude(10, convexity=8) polygon(points);
+}
+
 // 3/4-inch (trade size) schedule 40 PVC pipe with the wall thickness
 // chosen to make the sleeve width 1.25".
 PVC_corner(26.7, wall_th=2.525);
