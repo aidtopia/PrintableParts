@@ -37,6 +37,7 @@ module AT_threads(h, d, pitch, tap=true, nozzle_d=0.4) {
     extended_h = h + pitch;
     
     slice_count = ceil(slices_per_turn * extended_h / pitch);
+    full_turns = ceil(slice_count / slices_per_turn);
 
     function circle_points(z) = [
         for (i=[0:slices_per_turn-1])
@@ -83,7 +84,7 @@ module AT_threads(h, d, pitch, tap=true, nozzle_d=0.4) {
                 index(a1 - slices_per_turn) : undef,
             skirt1b = a1 > slices_per_turn ? l1+0 : bottom(a1),
             skirt1t = s1 ? s1+2 : top(a1),
-            skirt1ex = l1 && (a1 == slice_count) ?
+            skirt1ex = l1 && (a1 == slices_per_turn) ?
                 [l1+0, l1+2] : [],
             u1 = a1 + slices_per_turn <= slice_count ?
                 index(a1 + slices_per_turn) : undef
