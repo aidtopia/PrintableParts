@@ -49,18 +49,31 @@ module cross_section(plane="xy", keep=false, cut_size=250, center=false) {
 }
 
 module cat_grass_planter(wall_th=3, perf_d=1.5, nozzle_d=0.4) {
-    days = [
-        "SUNDAY",
-        "MONDAY",
-        "TUESDAY",
-        "WEDNESDAY",
-        "THURSDAY",
-        "FRIDAY",
-        "CATURDAY!",
-        ""
+//    names = [
+//        "SUNDAY",
+//        "MONDAY",
+//        "TUESDAY",
+//        "WEDNESDAY",
+//        "THURSDAY",
+//        "FRIDAY",
+//        "CATURDAY!",
+//        ""
+//    ];
+
+    names = [
+        "CALLIE",
+        "SHEBA",
+        "BRAT",
+        "LILA",
+        "MISSY",
+        "CRICK",
+        "WATSON",
+        "WILLOW",
+        "MADRONE",
+        "PEPPER"
     ];
 
-    sides = len(days);
+    sides = len(names);
 
     soil_volume = 380000;  // expanded volume (mm^3) of one soil puck
     soil_depth = 44;
@@ -122,9 +135,9 @@ module cat_grass_planter(wall_th=3, perf_d=1.5, nozzle_d=0.4) {
             for (i = [0:sides - 1]) {
                 rotate([0, 0, (i+0.5)*dtheta])
                     translate([r, 0, water_h/2])
-                        rotate(90*zhat) rotate(45*yhat) rotate(90*xhat)
+                        rotate(90*zhat) rotate(-45*yhat) rotate(90*xhat)
                             linear_extrude(wall_th, center=true, convexity=10)
-                                text(days[i], size=text_size,
+                                text(names[i], size=text_size,
                                      halign="center", valign="center");
             }
         }
@@ -254,12 +267,12 @@ module cat_grass_planter(wall_th=3, perf_d=1.5, nozzle_d=0.4) {
             }
         }
     } else {
-        translate(-0.5*water_od*xhat) rotate([0, 0, 180/sides])
+        translate([-(0.5*water_od+5), 0, 0]) rotate([0, 0, 180/sides])
             water_box();
-        translate(0.5*soil_od*xhat) rotate([0, 0, 180/sides + 180])
+        translate([(0.5*soil_od+7.5), 1.5, 0]) rotate([0, 0, 180/sides + 180])
             soil_box();
-        translate([0, -0.41*(lid_od+max(water_od, soil_od)), wall_th])
-            rotate([180, 0, 180/sides])
+        translate([5, -0.40*(lid_od+max(water_od, soil_od))-1, wall_th])
+            rotate([180, 0, 180/sides-3])
                 lid();
     }
     echo(str("soil volume = ", volume(soil_id, sides, soil_depth)));
