@@ -3,6 +3,47 @@
 
 // These interfaces may change.  No promises.
 
+// SLICES
+
+// Turns a Python-like index, where negative values are relative to the end,
+// into an absolute index.  This doesn't mean the result won't be negative.
+function abs_index(i, v) = i >= 0 ? i : len(v) + i;
+
+// An almost Python-like slice to simplify working with lists in OpenSCAD.
+function slice(v, first=0, last=-1, step=undef) =
+    assert(is_list(v))
+    let(
+        begin = abs_index(first, v),
+        end   = abs_index(last, v),
+        delta = is_undef(step) ? begin <= end ? 1 : -1 : step
+    )
+    assert(delta != 0)
+    (0 < delta && end < begin) ? [] :
+    (delta < 0 && begin < end) ? [] :
+        [for (i = [begin:delta:end]) if (0 <= i && i < len(v)) v[i]];
+
+// We can use slice as a building block to name useful operations.
+function reversed(v) = slice(v, -1, 0);
+function prefix_of(v, count) = (count <= 0) ? [] : slice(v, 0, count-1);
+function suffix_of(v, count) = (count <= 0) ? [] : slice(v, -count);
+
+function swap_elements(v, index0, index1) =
+    let(
+        i0 = min(abs_index(index0), abs_index(index1)),
+        i1 = max(abs_index(index0), abs_index(index1))
+    )
+    assert(0 <= i0 && i0 < len(v))
+    assert(0 <= i1 && i1 < len(v))
+    i0 == i1 ? v
+             : [
+                each 0 < i0 ? slice(v, 0, i0-1, 1) : [],
+                v[i1],
+                each slice(v, i0+1, i1-1, 1),
+                v[i0],
+                each slice(v, i1+1,   -1, 1)
+               ];
+
+
 // GENERAL PURPOSE FUNCTIONS
 
 function front(v) = v[0];
