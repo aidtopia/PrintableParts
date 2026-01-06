@@ -34,31 +34,52 @@ module measure(nozzle_d=0.4) {
 // The dispenser nozzle has five "teeth" around the opening,
 // with "slots" between them.
 
-function slot_profile(w1=4.3, w2=3.4, h=7, clearance=0) = [
-    [-(w1+clearance)/2, 0],
-    [-(w2+clearance)/2, h-clearance],
-    [(w2+clearance)/2, h-clearance],
-    [(w1+clearance)/2, 0]
-];
+function slot_width(h) = 4.3 - 0.9/7 * h;
 
-module slot_filler(w1=4.3, w2=3.4, h=7, th=2, clearance=0) {
+function slot_profile(h=7, clearance=0, r=0) =
+    let(
+        h0 = 0 - r,
+        h1 = h,
+        w0 = slot_width(h0),
+        w1 = slot_width(h1)
+    )
+    [
+        [-(w0+clearance)/2, h0],
+        [-(w1+clearance)/2, h1-clearance],
+        [(w1+clearance)/2, h1-clearance],
+        [(w0+clearance)/2, h0]
+    ];
+
+module slot_filler(th=2, clearance=0, nozzle_d=0.4) {
+    r = 0.5;
     rotate([90, 0, 90])
         linear_extrude(th)
-            polygon(slot_profile(w1, w2, h, clearance));
+            offset(r, $fs=nozzle_d/2) offset(-r)
+                polygon(slot_profile(h=7, clearance=clearance, r=r));
 }
 
 module tip_plug(nozzle_d=0.4) {
     // These inner bits conform to the opening of the
     // dispenser nozzle.
-    cylinder(h=8, d=9.8, $fs=nozzle_d/2);
+    union () {
+        cylinder(h=8, d=9.8, $fs=nozzle_d/2);
+        translate([0, 0, 8]) sphere(d=9.8, $fs=nozzle_d/2);
+    }
     for (theta = [36:72:360]) {
         rotate([0, 0, theta]) translate([4, 0, 0])
-            slot_filler(th=3, clearance=-nozzle_d);
+            slot_filler(th=3, clearance=-nozzle_d, nozzle_d=nozzle_d);
+    }
+}
+
+
+module base(th=4, d=27, r=1, nozzle_d=0.4) {
+    linear_extrude(th) {
+        offset(r=r, $fs=nozzle_d/2) offset(-r) circle(d=d, $fn=5);
     }
 }
 
 module full_coverage_cap(nozzle_d=0.4) {
-    cylinder(h=4, d=25, $fn=5);
+    base(nozzle_d=nozzle_d);
     translate([0, 0, 4-nozzle_d/2]) {
         difference () {
             // Outer shape
@@ -85,11 +106,16 @@ module full_coverage_cap(nozzle_d=0.4) {
 }
 
 module minimal_cap(nozzle_d=0.4) {
-    cylinder(h=4, d=24, $fn=5);
+    base(r=2, nozzle_d=nozzle_d);
     translate([0, 0, 4-nozzle_d/2]) tip_plug(nozzle_d);
 }
 
 //measure();
-//full_coverage_cap();
-//translate([25, 0, 0])
-    minimal_cap();
+for (row = [1:3]) {
+    for (col = [1:3]) {
+        translate([(col-2) * 27, (row-2) * 27, 0]) {
+            //full_coverage_cap();
+            minimal_cap();
+        }
+    }
+}
